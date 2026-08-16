@@ -30,7 +30,11 @@ jobs:
       - name: Wrap the page into a full document
         run: python3 buddy-site/build.py
 
+      # enablement turns Pages on the first time this runs, so there's no
+      # manual step in repo settings.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
