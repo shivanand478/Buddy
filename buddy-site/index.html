@@ -577,7 +577,9 @@
     align-items: center;
     gap: 18px;
   }
-  .final svg { width: clamp(130px, 20vw, 180px); height: auto; }
+  /* Direct child only — a bare `.final svg` also grabs the button icons,
+     which sit at the same specificity as `.btn svg` and would win on order. */
+  .final > svg { width: clamp(130px, 20vw, 180px); height: auto; }
   .final h2 { font-size: clamp(32px, 5vw, 54px); color: #fff; max-width: 16ch; }
   .final p { color: #A9C4C6; font-size: 18px; }
   .final .btn-ghost {
@@ -608,16 +610,6 @@
   .foot-links a { text-decoration: none; color: var(--text-mid); }
   .foot-links a:hover { color: var(--text); }
   .foot-c { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
-
-  .dl-note {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    letter-spacing: .03em;
-    color: var(--coral);
-    margin-top: 12px;
-  }
-  .final .dl-note { color: #F2BE52; }
-  .btn[aria-disabled="true"] { opacity: .55; }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
@@ -745,17 +737,18 @@
         actually get things done.
       </p>
       <div class="btn-row">
-        <a class="btn btn-primary" data-dl="mac" href="#download">
+        <a class="btn btn-primary" data-dl="mac"
+           href="https://github.com/shivanand478/Buddy/releases/download/v1.0.0/Buddy_1.0.0_universal.dmg">
           <svg aria-hidden="true"><use href="#i-apple"></use></svg>
           Download for Mac
         </a>
-        <a class="btn btn-ghost" data-dl="win" href="#download">
+        <a class="btn btn-ghost" data-dl="win"
+           href="https://github.com/shivanand478/Buddy/releases/download/v1.0.0/Buddy_1.0.0_x64-setup.exe">
           <svg aria-hidden="true"><use href="#i-win"></use></svg>
           Download for Windows
         </a>
       </div>
       <p class="platform">Free · macOS 13+ · Windows 10+</p>
-      <p class="dl-note" id="dlNoteHero" hidden></p>
     </div>
 
     <div>
@@ -930,16 +923,17 @@
       <h2>Ready to get things done?</h2>
       <p>Your Buddy is waiting.</p>
       <div class="btn-row" style="justify-content:center;margin-top:6px">
-        <a class="btn btn-primary" data-dl="mac" href="#download">
+        <a class="btn btn-primary" data-dl="mac"
+           href="https://github.com/shivanand478/Buddy/releases/download/v1.0.0/Buddy_1.0.0_universal.dmg">
           <svg aria-hidden="true"><use href="#i-apple"></use></svg>
           Download for Mac
         </a>
-        <a class="btn btn-ghost" data-dl="win" href="#download">
+        <a class="btn btn-ghost" data-dl="win"
+           href="https://github.com/shivanand478/Buddy/releases/download/v1.0.0/Buddy_1.0.0_x64-setup.exe">
           <svg aria-hidden="true"><use href="#i-win"></use></svg>
           Download for Windows
         </a>
       </div>
-      <p class="dl-note" id="dlNoteFinal" hidden></p>
     </div>
   </div>
 </section>
@@ -963,71 +957,35 @@
 
 <script>
 /* ---- download links -------------------------------------------------------
-   Buttons resolve against the newest GitHub release, so cutting a new version
-   updates them with no edit here. Set a URL in DOWNLOADS to pin one manually;
-   until an installer exists, the button says so rather than 404ing.          */
+   The real installer URLs are in the markup, so the buttons work on first
+   paint, with JavaScript off, and when GitHub's API is rate-limited (it allows
+   only 60 unauthenticated calls an hour per IP).
+
+   This block is pure enhancement: it asks for the newest release and rewrites
+   the links if it gets an answer, so a future tag needs no edit here. Every
+   failure path leaves the working hardcoded link alone.                      */
 var REPO = 'shivanand478/Buddy';
 
-var DOWNLOADS = {
-  mac: null,   // manual override, e.g. "https://.../Buddy_1.0.0_universal.dmg"
-  win: null
-};
-
 (function () {
-  var LABEL = {
-    mac: 'The macOS build isn’t published yet.',
-    win: 'The Windows build isn’t published yet.'
-  };
+  if (!REPO || !window.fetch) return;
 
-  function buttons() { return Array.prototype.slice.call(document.querySelectorAll('[data-dl]')); }
-
-  function enable(a, url) {
-    a.setAttribute('href', url);
-    a.removeAttribute('aria-disabled');
-  }
-
-  function explain(a) {
-    a.setAttribute('aria-disabled', 'true');
-    a.addEventListener('click', function (e) {
-      e.preventDefault();
-      var note = a.closest('section, header').querySelector('.dl-note');
-      if (!note) return;
-      note.textContent = LABEL[a.dataset.dl];
-      note.hidden = false;
-    });
-  }
-
-  // Start from whatever is pinned; unpinned buttons explain themselves until
-  // the release lookup (if it succeeds) upgrades them.
-  buttons().forEach(function (a) {
-    var url = DOWNLOADS[a.dataset.dl];
-    if (url) { enable(a, url); } else { explain(a); }
-  });
-
-  if (!REPO || (DOWNLOADS.mac && DOWNLOADS.win)) return;
-
-  // Sandboxed hosts block cross-origin fetches; failing here is fine, the
-  // buttons simply keep their honest "not published yet" message.
   fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (release) {
-      if (!release || !release.assets) return;
+      if (!release || !release.assets || !release.assets.length) return;
 
       var pick = function (re) {
         var hit = release.assets.filter(function (x) { return re.test(x.name); })[0];
         return hit && hit.browser_download_url;
       };
-      var found = {
-        mac: DOWNLOADS.mac || pick(/\.dmg$/i),
-        win: DOWNLOADS.win || pick(/-setup\.exe$/i) || pick(/\.(exe|msi)$/i)
-      };
+      var newer = { mac: pick(/\.dmg$/i), win: pick(/-setup\.exe$/i) || pick(/\.(exe|msi)$/i) };
 
-      buttons().forEach(function (a) {
-        var url = found[a.dataset.dl];
-        if (url) enable(a, url);
+      Array.prototype.forEach.call(document.querySelectorAll('[data-dl]'), function (a) {
+        var url = newer[a.dataset.dl];
+        if (url) a.setAttribute('href', url);
       });
     })
-    .catch(function () { /* keep the fallback */ });
+    .catch(function () { /* the markup's link already works */ });
 })();
 
 (function () {
