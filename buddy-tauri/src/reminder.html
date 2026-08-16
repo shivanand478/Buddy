@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Buddy</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { background: transparent; overflow: hidden; }
+
+    .pop {
+      display: flex;
+      align-items: flex-end;
+      gap: 9px;
+      padding: 12px;
+      opacity: 0;
+      transform: translateY(16px) scale(.95);
+      transition: opacity .3s ease, transform .42s cubic-bezier(.18,1.4,.42,1);
+    }
+    .pop.in { opacity: 1; transform: none; }
+
+    .pop > svg { width: 62px; height: 68px; flex: none; }
+    .pop.in > svg { animation: bob 2.6s ease-in-out .4s infinite; }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+    .bubble {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      box-shadow: 0 18px 40px -16px rgba(0,0,0,.45);
+      padding: 12px 14px 12px;
+      min-width: 0;
+    }
+
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .top .k { font-family: var(--font-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim); }
+    .ring { width: 14px; height: 14px; flex: none; transform: rotate(-90deg); }
+    .ring circle { fill: none; stroke-width: 2.5; }
+    .ring .tr { stroke: var(--line); }
+    .ring .hd { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 34.5; }
+
+    .msg { font-weight: 700; font-size: 15px; margin-top: 5px; line-height: 1.28; letter-spacing: -.02em; }
+    .sub { font-size: 11.5px; color: var(--text-mid); margin-top: 2px; }
+
+    .acts { display: flex; align-items: center; gap: 6px; margin-top: 11px; }
+    .acts .btn { padding: 6px 13px; font-size: 12.5px; }
+
+    /* `display:flex` outranks the hidden attribute's UA rule, so say it again. */
+    .acts[hidden], .group[hidden] { display: none; }
+
+    /* grouped: several things due at once */
+    .group { margin-top: 9px; display: flex; flex-direction: column; gap: 1px; }
+    .g-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 0;
+      border-bottom: 1px dashed var(--line-soft);
+    }
+    .g-item:last-child { border-bottom: 0; }
+    .g-item .gt { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); width: 56px; flex: none; }
+    .g-item .gn { font-size: 13px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .g-done {
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      border-radius: 7px;
+      padding: 3px 9px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .g-done:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .g-done.did { background: var(--sage); border-color: var(--sage); color: #fff; }
+  </style>
+</head>
+<body>
+  <div class="pop" id="pop">
+    <svg id="buddy" viewBox="0 0 100 110" aria-hidden="true"><use id="buddyUse" href="#c-nub"></use></svg>
+    <div class="bubble">
+      <div class="top">
+        <span class="k" id="kind">Task</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="k" id="time"></span>
+          <svg class="ring" viewBox="0 0 14 14">
+            <circle class="tr" cx="7" cy="7" r="5.5"></circle>
+            <circle class="hd" id="ring" cx="7" cy="7" r="5.5"></circle>
+          </svg>
+        </span>
+      </div>
+
+      <p class="msg" id="msg">…</p>
+      <p class="sub" id="sub"></p>
+
+      <div class="group" id="group" hidden></div>
+
+      <div class="acts" id="acts">
+        <button class="btn btn-primary" id="done">Done</button>
+        <button class="btn" id="snooze">Snooze</button>
+        <button class="btn btn-quiet" id="skip">Skip</button>
+      </div>
+
+      <div class="acts" id="snoozeOpts" hidden>
+        <button class="btn" data-min="10">10 min</button>
+        <button class="btn" data-min="15">15 min</button>
+        <button class="btn" data-min="30">30 min</button>
+        <button class="btn" data-min="60">1 hour</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="reminder.js"></script>
+</body>
+</html>

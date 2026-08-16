@@ -1,0 +1,13 @@
+# Rust / Tauri build output
+buddy-tauri/src-tauri/target/
+buddy-tauri/src-tauri/gen/schemas/
+buddy-tauri/app-icon.png
+buddy-tauri/.preview/
+
+# Generated site output — the Pages workflow builds this
+buddy-site/dist/
+
+# Superseded SwiftUI prototype, kept locally but not published
+buddy-app/
+
+.DS_Store

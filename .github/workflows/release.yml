@@ -1,0 +1,51 @@
+name: Release
+
+# Push a tag to cut a release:  git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # One universal .dmg that runs on both Apple Silicon and Intel, so the
+          # download button never has to guess the visitor's chip.
+          - os: macos-latest
+            target: universal-apple-darwin
+            args: '--target universal-apple-darwin'
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ''
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: buddy-tauri/src-tauri -> target
+
+      # Builds the bundles and attaches them to a draft release.
+      # The macOS builds are unsigned — see the note in the root README.
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: buddy-tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Buddy ${{ github.ref_name }}'
+          releaseBody: 'Download the installer for your platform below.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

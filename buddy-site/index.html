@@ -1,0 +1,1112 @@
+<title>Buddy</title>
+
+<style>
+  /* ---------- tokens: light is the base; both dark states redefine only tokens ---------- */
+  :root {
+    --bg:        #FBF8F1;
+    --bg-alt:    #F3EDE0;
+    --surface:   #FFFFFF;
+    --surface-2: #F7F2E7;
+    --text:      #14313A;
+    --text-mid:  #3D5D66;
+    --text-dim:  #78939A;
+    --line:      #E6DCC9;
+    --line-soft: #F0E7D6;
+    --accent:    #EFB43B;
+    --accent-ink:#14313A;
+    --accent-soft:#FBEBC5;
+    --coral:     #E0654B;
+    --coral-soft:#FADDD5;
+    --sage:      #5F9C85;
+    --sage-soft: #DCEDE5;
+    --screen-1:  #1B3D48;
+    --screen-2:  #2E5C63;
+    --shadow:    0 1px 2px rgba(20,49,58,.05), 0 12px 32px -12px rgba(20,49,58,.18);
+    --shadow-lg: 0 2px 4px rgba(20,49,58,.06), 0 40px 80px -32px rgba(20,49,58,.34);
+
+    --font-display: "Avenir Next", "Avenir", "Futura", ui-sans-serif, system-ui, sans-serif;
+    --font-body: "Charter", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --font-mono: "Menlo", "SF Mono", ui-monospace, monospace;
+
+    --wrap: 1080px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:        #0E2128;
+      --bg-alt:    #132C34;
+      --surface:   #16323B;
+      --surface-2: #1B3B45;
+      --text:      #E9F1EE;
+      --text-mid:  #A9C4C6;
+      --text-dim:  #7B9BA0;
+      --line:      #264954;
+      --line-soft: #22434D;
+      --accent:    #F2BE52;
+      --accent-ink:#12303A;
+      --accent-soft:#3A3421;
+      --coral:     #EF8168;
+      --coral-soft:#402A26;
+      --sage:      #7FBCA3;
+      --sage-soft: #21403A;
+      --screen-1:  #0A1A20;
+      --screen-2:  #143039;
+      --shadow:    0 1px 2px rgba(0,0,0,.3), 0 12px 32px -12px rgba(0,0,0,.5);
+      --shadow-lg: 0 2px 4px rgba(0,0,0,.3), 0 40px 80px -32px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg:        #0E2128;
+    --bg-alt:    #132C34;
+    --surface:   #16323B;
+    --surface-2: #1B3B45;
+    --text:      #E9F1EE;
+    --text-mid:  #A9C4C6;
+    --text-dim:  #7B9BA0;
+    --line:      #264954;
+    --line-soft: #22434D;
+    --accent:    #F2BE52;
+    --accent-ink:#12303A;
+    --accent-soft:#3A3421;
+    --coral:     #EF8168;
+    --coral-soft:#402A26;
+    --sage:      #7FBCA3;
+    --sage-soft: #21403A;
+    --screen-1:  #0A1A20;
+    --screen-2:  #143039;
+    --shadow:    0 1px 2px rgba(0,0,0,.3), 0 12px 32px -12px rgba(0,0,0,.5);
+    --shadow-lg: 0 2px 4px rgba(0,0,0,.3), 0 40px 80px -32px rgba(0,0,0,.7);
+  }
+
+  /* ---------- base ---------- */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  p { margin: 0; }
+  a { color: inherit; }
+
+  .wrap {
+    max-width: var(--wrap);
+    margin-inline: auto;
+    padding-inline: 24px;
+  }
+
+  .band { padding-block: clamp(76px, 11vw, 150px); }
+  .band-alt { background: var(--bg-alt); }
+
+  .h2 { font-size: clamp(32px, 5.2vw, 56px); }
+
+  .lede {
+    font-size: clamp(17px, 1.8vw, 20px);
+    color: var(--text-mid);
+    max-width: 50ch;
+    margin-top: 20px;
+  }
+
+  :where(a, button, [tabindex]):focus-visible {
+    outline: 2.5px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 15.5px;
+    letter-spacing: -0.01em;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 14px 27px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  .btn svg { width: 16px; height: 16px; flex: none; }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow: 0 2px 0 rgba(20,49,58,.14);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 22px -10px rgba(239,180,59,.95); }
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--line);
+  }
+  .btn-ghost:hover { transform: translateY(-2px); border-color: var(--text-dim); }
+
+  .btn-row { display: flex; flex-wrap: wrap; gap: 12px; }
+
+  /* ---------- nav ---------- */
+  .nav {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: color-mix(in srgb, var(--bg) 84%, transparent);
+    backdrop-filter: saturate(160%) blur(12px);
+  }
+  .nav-in {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: 66px;
+  }
+  .mark {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.04em;
+    text-decoration: none;
+  }
+  .mark svg { width: 25px; height: 27px; }
+  .nav-links { display: flex; gap: 26px; font-family: var(--font-display); font-size: 14.5px; font-weight: 500; }
+  .nav-links a { text-decoration: none; color: var(--text-mid); }
+  .nav-links a:hover { color: var(--text); }
+  @media (max-width: 700px) { .nav-links { display: none; } }
+  .nav .btn { padding: 10px 20px; font-size: 14px; }
+
+  /* ---------- hero ---------- */
+  .hero { padding-block: clamp(48px, 7vw, 96px) clamp(64px, 9vw, 120px); }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+    gap: clamp(32px, 6vw, 76px);
+    align-items: center;
+  }
+  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+
+  .hero h1 {
+    font-size: clamp(42px, 7vw, 76px);
+    font-weight: 800;
+    letter-spacing: -0.045em;
+  }
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(transparent 60%, var(--accent-soft) 60%);
+    padding-inline: 3px;
+  }
+  .hero .lede { max-width: 44ch; }
+  .hero .btn-row { margin-top: 34px; }
+  .platform {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-dim);
+    letter-spacing: .05em;
+    margin-top: 18px;
+  }
+
+  /* ---------- the big hero buddy + its reminder ---------- */
+  .poster {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: clamp(24px, 4vw, 44px) 24px 30px;
+    border-radius: 26px;
+    background:
+      radial-gradient(70% 55% at 50% 22%, var(--accent-soft), transparent 70%),
+      var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+  }
+  .poster-buddy { width: clamp(170px, 26vw, 230px); height: auto; display: block; }
+  .poster-buddy.is-live { animation: float 3.4s ease-in-out infinite; }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 20px 44px -22px rgba(20,49,58,.5);
+    padding: 15px 17px 14px;
+    width: min(300px, 100%);
+    margin-top: -6px;
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .card-msg {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.025em;
+    margin-top: 7px;
+    line-height: 1.28;
+  }
+  .card-sub { font-size: 13px; color: var(--text-mid); margin-top: 3px; }
+  .card-acts { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  .act {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 7px 15px;
+    cursor: pointer;
+    transition: background .14s ease, border-color .14s ease;
+  }
+  .act:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .act-done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .act-done:hover { background: var(--accent); filter: brightness(1.05); }
+  .act-quiet {
+    background: none;
+    border: 0;
+    color: var(--text-dim);
+    padding: 7px 6px;
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+  .act-quiet:hover { color: var(--text); background: none; }
+
+  .ring { width: 15px; height: 15px; flex: none; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-width: 2.6; }
+  .ring .track { stroke: var(--line); }
+  .ring .head { stroke: var(--accent); stroke-linecap: round; stroke-dasharray: 37.7; stroke-dashoffset: 0; }
+  .card.is-live .ring .head { animation: drain 8s linear forwards; }
+  @keyframes drain { to { stroke-dashoffset: 37.7; } }
+
+  .poster-note {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  /* ---------- how it works ---------- */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 52px;
+  }
+  @media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px 24px 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow);
+  }
+  .step-n {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    color: var(--accent-ink);
+    background: var(--accent);
+    width: fit-content;
+    padding: 3px 9px;
+    border-radius: 6px;
+  }
+  .step h3 { font-size: 20px; letter-spacing: -0.028em; }
+  .step p { font-size: 14.5px; color: var(--text-mid); line-height: 1.55; }
+  .step-demo {
+    margin-top: auto;
+    padding-top: 16px;
+  }
+
+  /* the little in-card mockups */
+  .mock {
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    background: var(--surface-2);
+    padding: 13px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .mock-field {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .mock-label {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .caret {
+    display: inline-block;
+    width: 1.5px;
+    height: 15px;
+    background: var(--accent);
+    animation: blink 1.1s steps(1) infinite;
+    vertical-align: -2px;
+  }
+  @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+  .time-row { display: flex; gap: 7px; flex-wrap: wrap; }
+  .time-chip {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 7px 11px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--text-mid);
+  }
+  .time-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+  /* mini reminder inside step 3 */
+  .mini {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .mini svg { width: 46px; height: auto; flex: none; }
+  .mini-bubble {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    flex: 1;
+    box-shadow: var(--shadow);
+  }
+  .mini-msg { font-family: var(--font-display); font-weight: 600; font-size: 13.5px; letter-spacing: -.02em; }
+  .mini-acts { display: flex; gap: 6px; margin-top: 8px; }
+  .mini-acts span {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+  }
+  .mini-acts span:first-child { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  /* ---------- for you + team ---------- */
+  .sides {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 52px;
+  }
+  @media (max-width: 860px) { .sides { grid-template-columns: 1fr; } }
+
+  .side {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 28px 28px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: var(--shadow);
+  }
+  .side-head {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .side-head::before { content: ""; width: 20px; height: 1px; background: var(--accent); }
+  .side h3 { font-size: clamp(23px, 2.6vw, 29px); }
+
+  .list { display: flex; flex-direction: column; gap: 0; }
+  .list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px dashed var(--line-soft);
+  }
+  .list-item:last-child { border-bottom: 0; }
+  .list-item .when {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    width: 62px;
+    flex: none;
+  }
+  .list-item .what { font-family: var(--font-display); font-weight: 500; font-size: 15px; letter-spacing: -.015em; }
+
+  .assign-card {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 17px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .assign-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 14.5px;
+  }
+  .assign-row .k {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .assign-row .v { font-family: var(--font-display); font-weight: 600; letter-spacing: -.015em; }
+  .who { display: inline-flex; align-items: center; gap: 7px; }
+  .av {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--font-display); font-weight: 700; font-size: 10px;
+    background: var(--coral); color: #fff;
+  }
+  .then {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* ---------- characters ---------- */
+  .chars {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-top: 52px;
+  }
+  @media (max-width: 940px) { .chars { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 560px) { .chars { grid-template-columns: repeat(2, 1fr); } }
+
+  .char {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px 14px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: center;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .char:hover { transform: translateY(-6px); border-color: var(--accent); }
+  .char svg { width: 74px; height: auto; }
+  .char-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -.03em; }
+  .char-role {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .char-line {
+    font-size: 13.5px;
+    color: var(--text-mid);
+    font-style: italic;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+  .char[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---------- final cta ---------- */
+  .final {
+    background: var(--screen-1);
+    border-radius: 26px;
+    padding: clamp(48px, 7vw, 88px) clamp(26px, 5vw, 60px) clamp(44px, 6vw, 72px);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .final svg { width: clamp(130px, 20vw, 180px); height: auto; }
+  .final h2 { font-size: clamp(32px, 5vw, 54px); color: #fff; max-width: 16ch; }
+  .final p { color: #A9C4C6; font-size: 18px; }
+  .final .btn-ghost {
+    background: rgba(255,255,255,.07);
+    color: #EAF2F0;
+    border-color: rgba(255,255,255,.22);
+  }
+  .final .btn-ghost:hover { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.4); }
+
+  /* ---------- footer ---------- */
+  .foot { padding-block: 40px 56px; }
+  .foot-in {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+  }
+  .foot-links {
+    display: flex;
+    gap: 22px;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .foot-links a { text-decoration: none; color: var(--text-mid); }
+  .foot-links a:hover { color: var(--text); }
+  .foot-c { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
+
+  .dl-note {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: .03em;
+    color: var(--coral);
+    margin-top: 12px;
+  }
+  .final .dl-note { color: #F2BE52; }
+  .btn[aria-disabled="true"] { opacity: .55; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  }
+</style>
+
+<!-- ===== character sprite ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <style>
+    .eyes { transform-box: fill-box; transform-origin: center; animation: blinkEye 5.2s infinite; }
+    @keyframes blinkEye {
+      0%, 92%, 100% { transform: scaleY(1); }
+      95%           { transform: scaleY(.12); }
+    }
+    @media (prefers-reduced-motion: reduce) { .eyes { animation: none; } }
+  </style>
+
+  <symbol id="c-pip" viewBox="0 0 100 110">
+    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
+    <rect x="30" y="62" width="40" height="38" rx="15" fill="#E0654B"/>
+    <circle cx="50" cy="42" r="30" fill="#F6D2B4"/>
+    <path d="M20 40c2-20 16-30 30-30s28 10 30 28c-8-6-14-12-22-14-6 6-24 10-38 16z" fill="#3A2A26"/>
+    <g class="eyes">
+      <circle cx="40" cy="44" r="4" fill="#2A1F1C"/>
+      <circle cx="61" cy="44" r="4" fill="#2A1F1C"/>
+    </g>
+    <circle cx="32" cy="53" r="5" fill="#EFA089" opacity=".55"/>
+    <circle cx="69" cy="53" r="5" fill="#EFA089" opacity=".55"/>
+    <path d="M43 56q7 6 14 0" stroke="#2A1F1C" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="c-bolt" viewBox="0 0 100 110">
+    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
+    <rect x="33" y="66" width="34" height="34" rx="10" fill="#8FA6AE"/>
+    <rect x="42" y="72" width="16" height="10" rx="3" fill="#EFB43B"/>
+    <path d="M50 14v10" stroke="#8FA6AE" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="50" cy="11" r="5" fill="#EFB43B"/>
+    <rect x="20" y="24" width="60" height="46" rx="16" fill="#C3D2D6"/>
+    <rect x="27" y="33" width="46" height="26" rx="11" fill="#1B3D48"/>
+    <g class="eyes">
+      <rect x="35" y="41" width="10" height="10" rx="4" fill="#6FE0C4"/>
+      <rect x="55" y="41" width="10" height="10" rx="4" fill="#6FE0C4"/>
+    </g>
+  </symbol>
+
+  <symbol id="c-miso" viewBox="0 0 100 110">
+    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
+    <path d="M50 66c18 0 27 12 27 24 0 6-4 10-9 10H32c-5 0-9-4-9-10 0-12 9-24 27-24z" fill="#F0B48A"/>
+    <path d="M25 30l3-19 17 12z" fill="#F0B48A"/>
+    <path d="M75 30l-3-19-17 12z" fill="#F0B48A"/>
+    <path d="M29 26l2-10 9 7z" fill="#E08C7C"/>
+    <path d="M71 26l-2-10-9 7z" fill="#E08C7C"/>
+    <ellipse cx="50" cy="44" rx="30" ry="26" fill="#F5C39F"/>
+    <g class="eyes">
+      <ellipse cx="39" cy="42" rx="4.5" ry="6" fill="#2E2320"/>
+      <ellipse cx="61" cy="42" rx="4.5" ry="6" fill="#2E2320"/>
+    </g>
+    <path d="M46 53h8l-4 4z" fill="#E08C7C"/>
+    <path d="M50 57q-5 5-9 1M50 57q5 5 9 1" stroke="#B5745F" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M16 44h12M16 51h12M84 44H72M84 51H72" stroke="#DCC0AC" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="c-zib" viewBox="0 0 100 110">
+    <ellipse cx="50" cy="103" rx="24" ry="5" fill="rgba(0,0,0,.14)"/>
+    <path d="M50 70c13 0 21 9 21 20 0 6-4 10-10 10H39c-6 0-10-4-10-10 0-11 8-20 21-20z" fill="#5F9C85"/>
+    <path d="M34 20l6 12M66 20l-6 12" stroke="#5F9C85" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="33" cy="17" r="4.5" fill="#EFB43B"/>
+    <circle cx="67" cy="17" r="4.5" fill="#EFB43B"/>
+    <ellipse cx="50" cy="46" rx="29" ry="27" fill="#7FBCA3"/>
+    <g class="eyes">
+      <ellipse cx="38" cy="45" rx="7" ry="10" fill="#12303A" transform="rotate(-12 38 45)"/>
+      <ellipse cx="62" cy="45" rx="7" ry="10" fill="#12303A" transform="rotate(12 62 45)"/>
+    </g>
+    <circle cx="36" cy="41" r="2.4" fill="#fff"/>
+    <circle cx="60" cy="41" r="2.4" fill="#fff"/>
+    <path d="M44 61q6 4 12 0" stroke="#3A6B5C" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="c-nub" viewBox="0 0 100 110">
+    <ellipse cx="50" cy="103" rx="27" ry="5" fill="rgba(0,0,0,.14)"/>
+    <path d="M50 16c19 0 33 15 33 38 0 26-14 46-33 46S17 80 17 54c0-23 14-38 33-38z" fill="#EFB43B"/>
+    <path d="M50 4l9 14H41z" fill="#E0654B"/>
+    <g class="eyes">
+      <circle cx="38" cy="50" r="8" fill="#fff"/>
+      <circle cx="62" cy="50" r="8" fill="#fff"/>
+      <circle cx="39" cy="51" r="4" fill="#2A1F1C"/>
+      <circle cx="63" cy="51" r="4" fill="#2A1F1C"/>
+    </g>
+    <path d="M42 68q8 8 16 0" stroke="#8A5F16" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="27" cy="63" r="5" fill="#E0654B" opacity=".45"/>
+    <circle cx="73" cy="63" r="5" fill="#E0654B" opacity=".45"/>
+    <path d="M34 100l-5 6M66 100l5 6" stroke="#D89F26" stroke-width="4" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-apple" viewBox="0 0 16 16">
+    <path fill="currentColor" d="M11.1 8.5c0-1.4 1.1-2.1 1.2-2.2-.7-1-1.7-1.1-2.1-1.1-.9-.1-1.7.5-2.2.5s-1.2-.5-1.9-.5c-1 0-1.9.6-2.4 1.5-1 1.8-.3 4.4.7 5.9.5.7 1.1 1.5 1.9 1.5s1-.5 1.9-.5 1.2.5 2 .5 1.3-.7 1.8-1.4c.6-.8.8-1.6.8-1.6s-1.6-.6-1.7-2.6zM9.6 3.9c.4-.5.7-1.2.6-1.9-.6 0-1.4.4-1.8.9-.4.5-.7 1.2-.6 1.9.7.1 1.4-.4 1.8-.9z"/>
+  </symbol>
+  <symbol id="i-win" viewBox="0 0 16 16">
+    <path fill="currentColor" d="M0 2.4l6.5-.9v6.1H0V2.4zm7.3-1L16 0v7.6H7.3V1.4zM0 8.4h6.5v6.1L0 13.6V8.4zm7.3 0H16V16l-8.7-1.2V8.4z"/>
+  </symbol>
+</svg>
+
+<!-- ===== nav ===== -->
+<nav class="nav">
+  <div class="wrap nav-in">
+    <a class="mark" href="#top">
+      <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
+      Buddy
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#teams">Teams</a>
+    </div>
+    <a class="btn btn-primary" href="#download">Download</a>
+  </div>
+</nav>
+
+<!-- ===== 1. hero — what is Buddy? ===== -->
+<header class="wrap hero" id="top">
+  <div class="hero-grid">
+    <div>
+      <h1>Meet your little <em>productivity buddy</em>.</h1>
+      <p class="lede">
+        Tasks, routines and team work — Buddy reminds you when it's time to
+        actually get things done.
+      </p>
+      <div class="btn-row">
+        <a class="btn btn-primary" data-dl="mac" href="#download">
+          <svg aria-hidden="true"><use href="#i-apple"></use></svg>
+          Download for Mac
+        </a>
+        <a class="btn btn-ghost" data-dl="win" href="#download">
+          <svg aria-hidden="true"><use href="#i-win"></use></svg>
+          Download for Windows
+        </a>
+      </div>
+      <p class="platform">Free · macOS 13+ · Windows 10+</p>
+      <p class="dl-note" id="dlNoteHero" hidden></p>
+    </div>
+
+    <div>
+      <div class="poster">
+        <svg class="poster-buddy is-live" id="posterBuddy" viewBox="0 0 100 110" aria-hidden="true"><use id="heroChar" href="#c-nub"></use></svg>
+
+        <div class="card is-live" id="card">
+          <div class="card-top">
+            <span id="cardKind">Task</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <span id="cardTime" style="letter-spacing:.06em">4:30 PM</span>
+              <svg class="ring" viewBox="0 0 16 16" aria-hidden="true">
+                <circle class="track" cx="8" cy="8" r="6"></circle>
+                <circle class="head" cx="8" cy="8" r="6"></circle>
+              </svg>
+            </span>
+          </div>
+          <p class="card-msg" id="cardMsg">Hey Shiv! Time to finish the homepage.</p>
+          <p class="card-sub" id="cardSub">30 minutes planned.</p>
+          <div class="card-acts">
+            <button class="act act-done" id="btnDone" type="button">Done</button>
+            <button class="act" id="btnSnooze" type="button">Snooze</button>
+            <button class="act act-quiet" id="btnSkip" type="button">Skip</button>
+          </div>
+        </div>
+      </div>
+      <p class="poster-note" id="posterNote">Buddy shows up, then leaves on its own — sped up here.</p>
+    </div>
+  </div>
+</header>
+
+<!-- ===== 2. how it works ===== -->
+<section class="band band-alt" id="how">
+  <div class="wrap">
+    <h2 class="h2">You tell Buddy when.<br>Buddy remembers when.</h2>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-n">01</span>
+        <h3>Add something</h3>
+        <p>Type what you need to do. That's the whole form.</p>
+        <div class="step-demo">
+          <div class="mock">
+            <span class="mock-label">What do you want to do?</span>
+            <div class="mock-field">Finish homepage<span class="caret"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-n">02</span>
+        <h3>Pick a time</h3>
+        <p>Every task gets a time. That's what makes the reminder worth anything.</p>
+        <div class="step-demo">
+          <div class="mock">
+            <span class="mock-label">When?</span>
+            <div class="time-row">
+              <span class="time-chip">Now</span>
+              <span class="time-chip on">Today · 4:30 PM</span>
+              <span class="time-chip">Tomorrow</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <span class="step-n">03</span>
+        <h3>Buddy shows up</h3>
+        <p>At 4:30, and not a moment before. Then it disappears again.</p>
+        <div class="step-demo">
+          <div class="mini">
+            <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
+            <div class="mini-bubble">
+              <p class="mini-msg">👋 Hey! It's time.</p>
+              <div class="mini-acts"><span>Done</span><span>Snooze</span><span>Skip</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 3. for you + your team ===== -->
+<section class="band" id="teams">
+  <div class="wrap">
+    <h2 class="h2">For you.<br>And your team.</h2>
+
+    <div class="sides">
+      <div class="side">
+        <span class="side-head">For you</span>
+        <h3>Your own day, remembered.</h3>
+        <div class="list">
+          <div class="list-item"><span class="when">09:30</span><span class="what">🎨 Finish the homepage</span></div>
+          <div class="list-item"><span class="when">01:30</span><span class="what">🍱 Lunch</span></div>
+          <div class="list-item"><span class="when">05:30</span><span class="what">🏋️ Gym</span></div>
+          <div class="list-item"><span class="when">07:00</span><span class="what">🎥 Create content</span></div>
+          <div class="list-item"><span class="when">Hourly</span><span class="what">💧 Water break</span></div>
+        </div>
+      </div>
+
+      <div class="side">
+        <span class="side-head">For your team</span>
+        <h3>Assign it. Buddy chases it.</h3>
+
+        <div class="assign-card">
+          <div class="assign-row"><span class="k">Task</span><span class="v">Finish mobile homepage</span></div>
+          <div class="assign-row"><span class="k">Who</span><span class="v who"><span class="av">R</span>Rahul</span></div>
+          <div class="assign-row"><span class="k">When</span><span class="v">Today · 4:30 PM</span></div>
+        </div>
+
+        <p class="then">Then, at 4:30, on Rahul's computer</p>
+
+        <div class="mini">
+          <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-zib"></use></svg>
+          <div class="mini-bubble">
+            <p class="mini-msg">👋 Hey Rahul!</p>
+            <p class="card-sub">Finish the mobile homepage. Assigned by Shiv.</p>
+            <div class="mini-acts"><span>Done</span><span>Snooze</span><span>Open</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 4. pick your buddy ===== -->
+<section class="band band-alt" id="characters">
+  <div class="wrap">
+    <h2 class="h2">Pick your Buddy.</h2>
+
+    <div class="chars" id="chars">
+      <button class="char" type="button" data-char="c-nub" aria-pressed="true">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
+        <span class="char-name">Nub</span>
+        <span class="char-role">The Motivator</span>
+        <span class="char-line">"You've got this."</span>
+      </button>
+      <button class="char" type="button" data-char="c-miso" aria-pressed="false">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-miso"></use></svg>
+        <span class="char-name">Miso</span>
+        <span class="char-role">The Chill One</span>
+        <span class="char-line">"No rush."</span>
+      </button>
+      <button class="char" type="button" data-char="c-bolt" aria-pressed="false">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-bolt"></use></svg>
+        <span class="char-name">Bolt</span>
+        <span class="char-role">The Strict One</span>
+        <span class="char-line">"You said 4:30."</span>
+      </button>
+      <button class="char" type="button" data-char="c-zib" aria-pressed="false">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-zib"></use></svg>
+        <span class="char-name">Zib</span>
+        <span class="char-role">The Chaos One</span>
+        <span class="char-line">"HEY. Remember that thing?"</span>
+      </button>
+      <button class="char" type="button" data-char="c-pip" aria-pressed="false">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-pip"></use></svg>
+        <span class="char-name">Pip</span>
+        <span class="char-role">The Steady One</span>
+        <span class="char-line">"Right on time."</span>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5. final cta ===== -->
+<section class="band" id="download">
+  <div class="wrap">
+    <div class="final">
+      <svg viewBox="0 0 100 110" aria-hidden="true"><use id="finalChar" href="#c-nub"></use></svg>
+      <h2>Ready to get things done?</h2>
+      <p>Your Buddy is waiting.</p>
+      <div class="btn-row" style="justify-content:center;margin-top:6px">
+        <a class="btn btn-primary" data-dl="mac" href="#download">
+          <svg aria-hidden="true"><use href="#i-apple"></use></svg>
+          Download for Mac
+        </a>
+        <a class="btn btn-ghost" data-dl="win" href="#download">
+          <svg aria-hidden="true"><use href="#i-win"></use></svg>
+          Download for Windows
+        </a>
+      </div>
+      <p class="dl-note" id="dlNoteFinal" hidden></p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 6. footer ===== -->
+<footer class="wrap foot">
+  <div class="foot-in">
+    <a class="mark" href="#top">
+      <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
+      Buddy
+    </a>
+    <div class="foot-links">
+      <a href="#download">macOS</a>
+      <a href="#download">Windows</a>
+      <a href="#top">Privacy</a>
+      <a href="#top">Terms</a>
+    </div>
+    <span class="foot-c">© 2026 Buddy</span>
+  </div>
+</footer>
+
+<script>
+/* ---- download links -------------------------------------------------------
+   Buttons resolve against the newest GitHub release, so cutting a new version
+   updates them with no edit here. Set a URL in DOWNLOADS to pin one manually;
+   until an installer exists, the button says so rather than 404ing.          */
+var REPO = 'shivanand478/Buddy';
+
+var DOWNLOADS = {
+  mac: null,   // manual override, e.g. "https://.../Buddy_1.0.0_universal.dmg"
+  win: null
+};
+
+(function () {
+  var LABEL = {
+    mac: 'The macOS build isn’t published yet.',
+    win: 'The Windows build isn’t published yet.'
+  };
+
+  function buttons() { return Array.prototype.slice.call(document.querySelectorAll('[data-dl]')); }
+
+  function enable(a, url) {
+    a.setAttribute('href', url);
+    a.removeAttribute('aria-disabled');
+  }
+
+  function explain(a) {
+    a.setAttribute('aria-disabled', 'true');
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var note = a.closest('section, header').querySelector('.dl-note');
+      if (!note) return;
+      note.textContent = LABEL[a.dataset.dl];
+      note.hidden = false;
+    });
+  }
+
+  // Start from whatever is pinned; unpinned buttons explain themselves until
+  // the release lookup (if it succeeds) upgrades them.
+  buttons().forEach(function (a) {
+    var url = DOWNLOADS[a.dataset.dl];
+    if (url) { enable(a, url); } else { explain(a); }
+  });
+
+  if (!REPO || (DOWNLOADS.mac && DOWNLOADS.win)) return;
+
+  // Sandboxed hosts block cross-origin fetches; failing here is fine, the
+  // buttons simply keep their honest "not published yet" message.
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (release) {
+      if (!release || !release.assets) return;
+
+      var pick = function (re) {
+        var hit = release.assets.filter(function (x) { return re.test(x.name); })[0];
+        return hit && hit.browser_download_url;
+      };
+      var found = {
+        mac: DOWNLOADS.mac || pick(/\.dmg$/i),
+        win: DOWNLOADS.win || pick(/-setup\.exe$/i) || pick(/\.(exe|msi)$/i)
+      };
+
+      buttons().forEach(function (a) {
+        var url = found[a.dataset.dl];
+        if (url) enable(a, url);
+      });
+    })
+    .catch(function () { /* keep the fallback */ });
+})();
+
+(function () {
+  var card   = document.getElementById('card');
+  var kindEl = document.getElementById('cardKind');
+  var timeEl = document.getElementById('cardTime');
+  var msgEl  = document.getElementById('cardMsg');
+  var subEl  = document.getElementById('cardSub');
+  var note   = document.getElementById('posterNote');
+  var buddy  = document.getElementById('posterBuddy');
+  var heroUse  = document.getElementById('heroChar');
+  var finalUse = document.getElementById('finalChar');
+
+  var queue = [
+    { kind: 'Task',    time: '4:30 PM', msg: 'Hey Shiv! Time to finish the homepage.', sub: '30 minutes planned.' },
+    { kind: 'Water',   time: 'Hourly',  msg: '💧 Water break!',                        sub: 'Third one today.' },
+    { kind: 'Routine', time: '5:30 PM', msg: '🏋️ Gym time.',                          sub: 'Mon · Wed · Fri.' },
+    { kind: 'Team',    time: '4:30 PM', msg: '👋 Finish the mobile homepage.',          sub: 'Assigned by Shiv.' },
+    { kind: 'Goal',    time: '8:00 PM', msg: '🚀 SaaS time.',                          sub: "You've got 30 minutes planned for this." }
+  ];
+
+  var i = 0, timers = [];
+  var HOLD = 8000, GAP = 2000;
+
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function clearAll() { timers.forEach(clearTimeout); timers = []; }
+
+  function hide() {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(10px) scale(.97)';
+    buddy.style.opacity = '.45';
+  }
+
+  function show() {
+    var r = queue[i % queue.length];
+    i++;
+    kindEl.textContent = r.kind;
+    timeEl.textContent = r.time;
+    msgEl.textContent = r.msg;
+    subEl.textContent = r.sub;
+
+    card.style.transition = 'opacity .34s ease, transform .44s cubic-bezier(.18,1.4,.42,1)';
+    card.style.opacity = '1';
+    card.style.transform = 'none';
+    buddy.style.opacity = '1';
+
+    // restart the countdown ring
+    card.classList.remove('is-live');
+    void card.offsetWidth;
+    card.classList.add('is-live');
+
+    later(function () { hide(); later(show, GAP); }, HOLD);
+  }
+
+  function act(label) {
+    clearAll();
+    hide();
+    note.textContent = label;
+    later(function () {
+      note.textContent = 'Buddy shows up, then leaves on its own — sped up here.';
+    }, 1900);
+    later(show, 2200);
+  }
+
+  document.getElementById('btnDone').addEventListener('click', function () { act('Nice. Marked done.'); });
+  document.getElementById('btnSnooze').addEventListener('click', function () { act('Snoozed 10 minutes.'); });
+  document.getElementById('btnSkip').addEventListener('click', function () { act('Skipped. No hard feelings.'); });
+
+  var chars = document.getElementById('chars');
+  chars.addEventListener('click', function (e) {
+    var btn = e.target.closest('.char');
+    if (!btn) return;
+    chars.querySelectorAll('.char').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
+    btn.setAttribute('aria-pressed', 'true');
+    var id = '#' + btn.dataset.char;
+    heroUse.setAttribute('href', id);
+    finalUse.setAttribute('href', id);
+  });
+
+  later(show, 600);
+})();
+</script>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Buddy</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="side-mark">
+        <svg viewBox="0 0 100 110" aria-hidden="true"><use id="sideChar" href="#c-nub"></use></svg>
+        Buddy
+      </div>
+
+      <button class="nav-item on" data-view="today">Today</button>
+      <button class="nav-item" data-view="tasks">Tasks</button>
+      <button class="nav-item" data-view="routine">Routine</button>
+      <button class="nav-item" data-view="team">Team</button>
+      <button class="nav-item" data-view="goals">Goals</button>
+
+      <div class="nav-spacer"></div>
+      <div class="nav-sep"></div>
+      <button class="nav-item" data-view="settings">Settings</button>
+    </aside>
+
+    <main class="main" id="main"></main>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

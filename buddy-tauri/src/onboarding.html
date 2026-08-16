@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Welcome to Buddy</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { background: var(--bg); }
+    .wrap { height: 100vh; display: flex; flex-direction: column; }
+    .step { flex: 1; overflow-y: auto; padding: 34px 34px 20px; display: flex; flex-direction: column; gap: 18px; }
+    .step.center { align-items: center; justify-content: center; text-align: center; }
+    .step h2 { font-size: 24px; }
+    .step p.sub { margin: 0; color: var(--text-mid); font-family: var(--font-body); font-size: 15px; max-width: 42ch; }
+    .step > svg { width: 130px; height: 143px; }
+
+    .foot {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 22px; border-top: 1px solid var(--line);
+    }
+    .dots { display: flex; gap: 5px; flex: 1; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+    .dot.on { background: var(--accent); }
+
+    .areas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+    .area {
+      padding: 11px 12px; border-radius: 10px; text-align: left;
+      background: var(--surface-2); border: 1.5px solid transparent;
+      font-weight: 500; font-size: 13.5px; color: var(--text);
+    }
+    .area.on { background: var(--sage-soft); border-color: var(--sage); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="step" id="step"></div>
+    <div class="foot">
+      <div class="dots" id="dots"></div>
+      <button class="btn btn-quiet" id="back" hidden>Back</button>
+      <button class="btn btn-primary" id="next">Continue</button>
+    </div>
+  </div>
+  <script type="module" src="onboarding.js"></script>
+</body>
+</html>
