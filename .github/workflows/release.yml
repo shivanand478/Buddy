@@ -17,8 +17,10 @@ jobs:
         include:
           # One universal .dmg that runs on both Apple Silicon and Intel, so the
           # download button never has to guess the visitor's chip.
+          # `universal-apple-darwin` is a Tauri concept, not a rustup target —
+          # install both real targets so Tauri can lipo them into one binary.
           - os: macos-latest
-            target: universal-apple-darwin
+            target: 'aarch64-apple-darwin,x86_64-apple-darwin'
             args: '--target universal-apple-darwin'
           - os: windows-latest
             target: x86_64-pc-windows-msvc
