@@ -303,6 +303,46 @@ async function run() {
       t.members.length === 2 && t.invites.length === 0, JSON.stringify(t));
   }
 
+  // ---------------------------------------------------------------- providers
+  {
+    // Each provider must be picked by its own key, and must post to its own
+    // endpoint with its own auth header. A wrong URL here means silent failure
+    // in production, so it is checked rather than assumed.
+    const cases = [
+      { keys: { BREVO_API_KEY: 'k' }, name: 'brevo', host: 'api.brevo.com', auth: h => h['api-key'] === 'k' },
+      { keys: { RESEND_API_KEY: 'k' }, name: 'resend', host: 'api.resend.com', auth: h => h.Authorization === 'Bearer k' },
+      { keys: { MAILJET_API_KEY: 'a', MAILJET_SECRET: 'b' }, name: 'mailjet', host: 'api.mailjet.com', auth: h => h.Authorization === 'Basic ' + btoa('a:b') },
+      { keys: { SENDGRID_API_KEY: 'k' }, name: 'sendgrid', host: 'api.sendgrid.com', auth: h => h.Authorization === 'Bearer k' }
+    ];
+
+    for (const c of cases) {
+      const env = { DB: makeDB(), SENDER_EMAIL: 'buddy@example.com', APP_NAME: 'Buddy', ...c.keys };
+      let seen = null;
+      globalThis.fetch = async (url, opts) => {
+        seen = { url: String(url), headers: opts.headers, body: JSON.parse(opts.body) };
+        return { ok: true, status: 200, text: async () => '{}' };
+      };
+      const r = await call(env, 'POST', '/auth/request-code', { body: { email: 'x@y.com' } });
+      check(`${c.name}: send accepted`, r.status === 204, 'got ' + r.status);
+      check(`${c.name}: posts to its own endpoint`, seen && seen.url.includes(c.host), seen && seen.url);
+      check(`${c.name}: sends its own auth header`, seen && c.auth(seen.headers), JSON.stringify(seen && seen.headers));
+
+      const h = await (await call(env, 'GET', '/health')).json();
+      check(`${c.name}: health names the live provider`, h.email === c.name, JSON.stringify(h));
+    }
+
+    // Brevo wins when several are present, matching the documented order.
+    const both = { DB: makeDB(), SENDER_EMAIL: 's@e.com', BREVO_API_KEY: 'b', SENDGRID_API_KEY: 'g' };
+    const h = await (await call(both, 'GET', '/health')).json();
+    check('the first configured provider wins', h.email === 'brevo', JSON.stringify(h));
+
+    const none = { DB: makeDB(), SENDER_EMAIL: 's@e.com' };
+    const hn = await (await call(none, 'GET', '/health')).json();
+    check('health reports no provider when none is set', hn.ok === true && hn.email === null, JSON.stringify(hn));
+    const r = await call(none, 'POST', '/auth/request-code', { body: { email: 'x@y.com' } });
+    check('no provider means a clear 503', r.status === 503, 'got ' + r.status);
+  }
+
   const failed = results.filter((r) => !r.ok);
   document.getElementById('out').innerHTML =
     results.map((r) => `<span class="${r.ok ? 'pass' : 'fail'}">${r.ok ? '✓' : '✗'} ${r.name}${r.detail ? ' — ' + r.detail : ''}</span>`).join('\n') +

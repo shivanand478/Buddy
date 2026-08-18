@@ -20,12 +20,34 @@ both require a domain before they'll send to anyone but you.
 
 ## Setup
 
-### 1. Brevo — get a key and a verified sender
+### 1. An email provider — get a key and a verified sender
 
-1. Sign up at [brevo.com](https://www.brevo.com) (free plan).
-2. **Senders, Domains & Dedicated IPs → Senders → Add a sender.** Use an address
-   you control. Brevo emails it a confirmation link; click it.
-3. **SMTP & API → API Keys → Generate a new API key.** Copy it — it is shown once.
+Any one of these works. The Worker picks whichever key it finds, so you can
+switch later by adding a different secret — no code change, no redeploy.
+
+| Provider | Free tier | Secret name(s) | Sends to anyone without a domain? |
+|---|---|---|---|
+| **Brevo** | 300/day | `BREVO_API_KEY` | Yes — verify one sender address |
+| **Mailjet** | 200/day | `MAILJET_API_KEY` + `MAILJET_SECRET` | Yes — verify one sender address |
+| **SendGrid** | 100/day | `SENDGRID_API_KEY` | Yes — "single sender verification" |
+| **Resend** | 100/day | `RESEND_API_KEY` | **No** — without a domain it only emails the account owner |
+
+Resend is the odd one out and the trap to avoid: it is the nicest API of the
+four, but on a free account with no domain it silently refuses to deliver to
+anybody except you. Fine for a smoke test, useless for real users.
+
+Whichever you choose:
+
+1. Sign up for the free plan.
+2. Verify a sender address you control — the provider emails it a confirmation
+   link. This is the address `SENDER_EMAIL` must be set to.
+3. Generate an API key and copy it. It is usually shown only once.
+
+**Brevo only:** check **Security → Authorized IPs**. If "Blocking unauthorized
+IP addresses" is *Activated* for API keys, every call from the Worker is
+rejected — Cloudflare sends from a large, shifting pool of edge IPs, so there
+is no address you could add. Deactivate it for API keys, then reload the page
+to confirm it stuck; the success toast has been seen to lie.
 
 ### 2. Cloudflare — database
 
@@ -46,16 +68,24 @@ both require a domain before they'll send to anyone but you.
 
    | Name | Type | Value |
    |---|---|---|
-   | `BREVO_API_KEY` | Secret | the key from step 1 |
+   | your provider's key from the table above | Secret | the key from step 1 |
    | `SENDER_EMAIL` | Text | your verified sender address |
    | `APP_NAME` | Text | `Buddy` |
+   | `SITE_URL` | Text | where invitees download the app |
 
 5. **Deploy** again so the bindings take effect.
 
 ### 4. Check it
 
 Open `https://buddy-api.<your-subdomain>.workers.dev/health` in a browser.
-You should see `{"ok":true}`.
+You should see something like:
+
+```json
+{"ok":true,"email":"brevo","sender":"you@example.com"}
+```
+
+`email` names the provider actually in use. If it is `null`, no key was found
+and sign-in will report that honestly rather than pretending to send.
 
 ### 5. Point the app at it
 

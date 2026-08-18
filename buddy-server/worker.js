@@ -186,33 +186,97 @@ Nothing else to do. If you weren't expecting this, you can ignore it.`;
   return { text, html };
 }
 
-/** One place that talks to Brevo, so every send is shaped the same way. */
-async function send(env, to, subject, text, html) {
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    headers: {
-      'api-key': env.BREVO_API_KEY,
-      'Content-Type': 'application/json',
-      accept: 'application/json'
-    },
-    body: JSON.stringify({
-      sender: { email: env.SENDER_EMAIL, name: env.APP_NAME || 'Buddy' },
-      to: [{ email: to }],
-      subject,
-      textContent: text,
-      htmlContent: html
+/**
+ * Email providers, in the order they are tried. The first one whose key is
+ * present wins, so switching provider is a matter of adding a different secret
+ * — no code change, no redeploy.
+ *
+ * All four have a free tier. The one that matters when picking: Brevo, Mailjet
+ * and SendGrid will verify a single sender address, so a Gmail address is
+ * enough. Resend's free tier without a domain can only email the account
+ * owner, which is fine for testing and useless for real users.
+ */
+const PROVIDERS = [
+  {
+    name: 'brevo',
+    ready: (env) => !!env.BREVO_API_KEY,
+    send: (env, to, subject, text, html) => ({
+      url: 'https://api.brevo.com/v3/smtp/email',
+      headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', accept: 'application/json' },
+      body: {
+        sender: { email: env.SENDER_EMAIL, name: env.APP_NAME || 'Buddy' },
+        to: [{ email: to }],
+        subject, textContent: text, htmlContent: html
+      }
     })
+  },
+  {
+    name: 'resend',
+    ready: (env) => !!env.RESEND_API_KEY,
+    send: (env, to, subject, text, html) => ({
+      url: 'https://api.resend.com/emails',
+      headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: { from: `${env.APP_NAME || 'Buddy'} <${env.SENDER_EMAIL}>`, to: [to], subject, text, html }
+    })
+  },
+  {
+    name: 'mailjet',
+    ready: (env) => !!(env.MAILJET_API_KEY && env.MAILJET_SECRET),
+    send: (env, to, subject, text, html) => ({
+      url: 'https://api.mailjet.com/v3.1/send',
+      headers: {
+        Authorization: 'Basic ' + btoa(`${env.MAILJET_API_KEY}:${env.MAILJET_SECRET}`),
+        'Content-Type': 'application/json'
+      },
+      body: {
+        Messages: [{
+          From: { Email: env.SENDER_EMAIL, Name: env.APP_NAME || 'Buddy' },
+          To: [{ Email: to }], Subject: subject, TextPart: text, HTMLPart: html
+        }]
+      }
+    })
+  },
+  {
+    name: 'sendgrid',
+    ready: (env) => !!env.SENDGRID_API_KEY,
+    send: (env, to, subject, text, html) => ({
+      url: 'https://api.sendgrid.com/v3/mail/send',
+      headers: { Authorization: 'Bearer ' + env.SENDGRID_API_KEY, 'Content-Type': 'application/json' },
+      body: {
+        personalizations: [{ to: [{ email: to }] }],
+        from: { email: env.SENDER_EMAIL, name: env.APP_NAME || 'Buddy' },
+        subject,
+        content: [{ type: 'text/plain', value: text }, { type: 'text/html', value: html }]
+      }
+    })
+  }
+];
+
+function activeProvider(env) {
+  return PROVIDERS.find((p) => p.ready(env)) || null;
+}
+
+/** One place that talks to whichever provider is configured. */
+async function send(env, to, subject, text, html) {
+  const provider = activeProvider(env);
+  if (!provider) throw new Error('no-provider');
+  if (!env.SENDER_EMAIL) throw new Error('no-sender');
+
+  const req = provider.send(env, to, subject, text, html);
+  const res = await fetch(req.url, {
+    method: 'POST',
+    headers: req.headers,
+    body: JSON.stringify(req.body)
   });
+
   if (!res.ok) {
-    console.error('brevo', res.status, await res.text().catch(() => ''));
+    // The provider's own words are far more useful than a generic failure, but
+    // they belong in the logs — the caller gets something a person can read.
+    console.error(provider.name, res.status, await res.text().catch(() => ''));
     throw new Error('email-failed');
   }
 }
 
-/**
- * Sends through Brevo, whose free tier allows 300 emails a day and — unlike
- * most providers — will verify a single sender address without a domain.
- */
 async function sendCode(env, to, code) {
   const appName = env.APP_NAME || 'Buddy';
   const { text, html } = emailBody(code, appName);
@@ -233,7 +297,7 @@ async function requestCodeRoute(request, env, now) {
   const email = normalizeEmail(body.email);
   if (!validEmail(email)) return fail(400, "That doesn't look like an email address.");
 
-  if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) {
+  if (!activeProvider(env) || !env.SENDER_EMAIL) {
     return fail(503, 'This server has no email provider configured yet.');
   }
 
@@ -456,7 +520,7 @@ async function inviteRoute(request, env, now) {
   const me = await sessionFor(request, env, now);
   if (!me) return fail(401, 'Not signed in.');
 
-  if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) {
+  if (!activeProvider(env) || !env.SENDER_EMAIL) {
     return fail(503, 'This server has no email provider configured yet.');
   }
 
@@ -586,7 +650,10 @@ export default {
     const route = request.method + ' ' + url.pathname;
     const now = Date.now();
 
-    if (route === 'GET /health') return json({ ok: true });
+    if (route === 'GET /health') {
+      const p = activeProvider(env);
+      return json({ ok: true, email: p ? p.name : null, sender: env.SENDER_EMAIL || null });
+    }
 
     if (!env.DB) return fail(500, 'This server has no database bound.');
 
