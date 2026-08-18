@@ -15,15 +15,16 @@ SRC = ROOT / "src"
 PREVIEW = ROOT / ".preview"
 
 ENTRY = {
-    "index.html": ["characters.js", "app.js"],
+    "index.html": ["characters.js", "util.js", "ask.js", "app.js"],
     "reminder.html": ["characters.js", "reminder.js"],
-    "onboarding.html": ["characters.js", "onboarding.js"],
+    "onboarding.html": ["characters.js", "util.js", "onboarding.js"],
 }
 
 
 def strip_module(text: str) -> str:
     text = re.sub(r"^\s*import\s+.*?;\s*$", "", text, flags=re.M | re.S)
     text = re.sub(r"^\s*export\s+(const|function|let|var)\s", r"\1 ", text, flags=re.M)
+    text = re.sub(r"^\s*export\s*\{[^}]*\};?\s*$", "", text, flags=re.M)
     return text
 
 

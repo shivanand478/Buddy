@@ -169,6 +169,67 @@ fn test_reminder(app: AppHandle, state: tauri::State<'_, Buddy>) {
     present(&app, sample);
 }
 
+
+/// True when today's check-in hasn't happened yet. Drives the morning window.
+#[tauri::command]
+fn needs_briefing(state: tauri::State<'_, Buddy>) -> bool {
+    state
+        .data
+        .lock()
+        .map(|d| d.prefs.onboarded && d.last_briefing.as_deref() != Some(&today_string()))
+        .unwrap_or(false)
+}
+
+#[tauri::command]
+fn finish_briefing(state: tauri::State<'_, Buddy>) {
+    if let Ok(mut d) = state.data.lock() {
+        d.last_briefing = Some(today_string());
+    }
+    state.persist();
+}
+
+/// Everything still open from before today — what the morning check-in offers
+/// to carry forward.
+#[tauri::command]
+fn unfinished_before_today(state: tauri::State<'_, Buddy>) -> Vec<Task> {
+    let today = today_string();
+    state
+        .data
+        .lock()
+        .map(|d| {
+            d.tasks
+                .iter()
+                .filter(|t| t.open() && t.date < today)
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Moves a stale task on to today at a new time, clearing its fired state so
+/// it can remind again.
+#[tauri::command]
+fn carry_over(state: tauri::State<'_, Buddy>, id: String, time: String) {
+    if let Ok(mut d) = state.data.lock() {
+        if let Some(t) = d.tasks.iter_mut().find(|t| t.id == id) {
+            t.date = today_string();
+            t.time = time;
+            t.fired_at = None;
+            t.snoozed_until = None;
+            t.skipped = false;
+        }
+    }
+    state.persist();
+}
+
+#[tauri::command]
+fn drop_task(state: tauri::State<'_, Buddy>, id: String) {
+    if let Ok(mut d) = state.data.lock() {
+        d.tasks.retain(|t| t.id != id);
+    }
+    state.persist();
+}
+
 // ------------------------------------------------------------------ windows
 
 fn show_main(app: &AppHandle) {
@@ -282,6 +343,11 @@ pub fn run() {
             finish_onboarding,
             set_autostart,
             test_reminder,
+            needs_briefing,
+            finish_briefing,
+            unfinished_before_today,
+            carry_over,
+            drop_task,
         ])
         .setup(|app| {
             // Menu-bar / tray only: no Dock icon, no app-switcher entry.
@@ -293,6 +359,7 @@ pub fn run() {
             let mut data = store::load(&path);
             scheduler::rollover(&mut data);
             let onboarded = data.prefs.onboarded;
+            let data_last_briefing = data.last_briefing.clone();
             store::save(&path, &data);
 
             app.manage(Buddy {
@@ -303,10 +370,12 @@ pub fn run() {
 
             build_tray(&handle)?;
 
-            if onboarded {
-                // Start quietly — no window, just wait.
-            } else {
+            if !onboarded {
                 show_onboarding(&handle);
+            } else if data_last_briefing.as_deref() != Some(today_string().as_str()) {
+                // First launch of the day (login, or a manual open): greet the
+                // user and settle what today looks like before going quiet.
+                show_main(&handle);
             }
 
             // The clock. Every 15 seconds, ask what's due.

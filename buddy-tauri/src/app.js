@@ -1,4 +1,6 @@
 import { installSprite, buddySvg, checkSvg, CHARACTERS } from './characters.js';
+import { askFlow } from './ask.js';
+import { esc, todayStr, nowMinutes, parseHHMM, label, newId } from './util.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -8,26 +10,11 @@ let data = null;
 let view = 'today';
 
 const main = document.getElementById('main');
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---------------------------------------------------------------- time utils
 
-const todayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local
-const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
 
-function parseHHMM(t) {
-  const [h, m] = String(t || '').split(':').map(Number);
-  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
-}
 
-function label(mins) {
-  if (mins == null) return '';
-  const h24 = Math.floor(mins / 60) % 24;
-  const m = mins % 60;
-  const suffix = h24 < 12 ? 'AM' : 'PM';
-  const h = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h}:${String(m).padStart(2, '0')} ${suffix}`;
-}
 
 /** "in 18 minutes" reads well; "in 515 minutes" does not. */
 function awayLabel(mins) {
@@ -176,6 +163,124 @@ function wireRows() {
   });
 }
 
+
+
+/**
+ * When carried-over work should land: an hour from now, rounded to the next
+ * half hour — but never inside quiet hours, where it could never fire.
+ */
+function carryTime() {
+  const d = new Date(Date.now() + 60 * 60 * 1000);
+  d.setMinutes(d.getMinutes() > 30 ? 60 : 30, 0, 0);
+  let mins = d.getHours() * 60 + d.getMinutes();
+
+  const { quiet_start: qs, quiet_end: qe } = data.prefs;
+  const quiet = qs === qe ? false
+    : qs < qe ? (mins >= qs && mins < qe)
+              : (mins >= qs || mins < qe);
+  if (quiet) mins = qe;                       // wait until the day starts
+
+  return String(Math.floor(mins / 60) % 24).padStart(2, '0') + ':' +
+         String(mins % 60).padStart(2, '0');
+}
+
+// ---------------------------------------------------------------- morning check-in
+
+/** Yesterday's leftovers, fetched from Rust so "before today" is one source of truth. */
+async function staleTasks() {
+  try { return await invoke('unfinished_before_today'); } catch (e) { return []; }
+}
+
+async function viewBriefing() {
+  const stale = await staleTasks();
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const name = data.prefs.name ? ', ' + data.prefs.name : '';
+
+  main.innerHTML = `
+    <div class="brief">
+      <div class="brief-hi">
+        ${buddySvg(data.prefs.character)}
+        <div>
+          <h1>${greet}${esc(name)} 👋</h1>
+          <p>${stale.length ? "Before we start — a few things didn't get done." : "Let's set up your day."}</p>
+        </div>
+      </div>
+
+      ${stale.length ? `
+        <div class="brief-step">
+          <span class="label">Still open from before</span>
+          <div id="carryList">
+            ${stale.map(t => `
+              <div class="carry" data-carry="${t.id}">
+                <span class="t">${esc(t.title)}</span>
+                <span class="ago">${esc(t.date)}</span>
+                <button class="btn" data-today="${t.id}">Do it today</button>
+                <button class="btn btn-quiet" data-drop="${t.id}">Drop</button>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+
+      <div class="brief-step">
+        <span class="label">What do you need to do today?</span>
+        <div id="briefAsk"></div>
+        <div id="briefAdded"></div>
+      </div>
+
+      <div class="brief-step" style="display:flex;gap:10px;align-items:center">
+        <button class="btn btn-primary" id="briefStart">Start my day</button>
+        <span class="label" style="text-transform:none;letter-spacing:0">I'll stay out of your way until something's due.</span>
+      </div>
+    </div>`;
+
+  mountBriefAsk();
+
+  main.querySelectorAll('[data-today]').forEach(b => b.addEventListener('click', async () => {
+    const hhmm = carryTime();
+    await invoke('carry_over', { id: b.dataset.today, time: hhmm });
+    settle(b, `moved to ${label(parseHHMM(hhmm))}`);
+  }));
+
+  main.querySelectorAll('[data-drop]').forEach(b => b.addEventListener('click', async () => {
+    await invoke('drop_task', { id: b.dataset.drop });
+    settle(b, 'dropped');
+  }));
+
+  document.getElementById('briefStart').addEventListener('click', async () => {
+    await invoke('finish_briefing');
+    await load();
+    setView('today');
+  });
+}
+
+function settle(btn, note) {
+  const row = btn.closest('.carry');
+  row.classList.add('settled');
+  row.querySelectorAll('button').forEach(x => x.remove());
+  const tag = document.createElement('span');
+  tag.className = 'ago';
+  tag.textContent = note;
+  row.appendChild(tag);
+}
+
+function mountBriefAsk() {
+  const host = document.getElementById('briefAsk');
+  if (!host) return;
+  askFlow(host, {
+    onCreate: async (task) => {
+      data.tasks.push(task);
+      await invoke('save_data', { data });
+      const added = document.getElementById('briefAdded');
+      const line = document.createElement('div');
+      line.className = 'carry';
+      line.innerHTML = `<span class="t">${esc(task.title)}</span><span class="ago">${esc(label(parseHHMM(task.time)))}</span>`;
+      added.appendChild(line);
+      mountBriefAsk();            // ready for the next one
+    },
+    onCancel: () => { host.innerHTML = ''; }
+  });
+}
+
 // ---------------------------------------------------------------- tasks
 
 function viewTasks() {
@@ -187,48 +292,12 @@ function viewTasks() {
       <h1>Tasks</h1>
       <p>Every task gets a time. That's what makes the reminder worth anything.</p>
     </div>
-
-    <div class="card">
-      <div class="field" style="margin-bottom:10px">
-        <span class="label">What do you want to do?</span>
-        <input id="tTitle" placeholder="Finish homepage design" autocomplete="off">
-      </div>
-      <div class="form-grid">
-        <div class="field"><span class="label">Date</span><input id="tDate" type="date" value="${todayStr()}"></div>
-        <div class="field"><span class="label">Time</span><input id="tTime" type="time" value="16:30"></div>
-        <div class="field"><span class="label">Duration</span>
-          <select id="tDur">
-            <option value="">—</option><option value="15">15 min</option>
-            <option value="30" selected>30 min</option><option value="60">1 hour</option>
-            <option value="120">2 hours</option>
-          </select>
-        </div>
-        <div class="field"><span class="label">Remind me</span>
-          <select id="tOffset">
-            <option value="0" selected>At the time</option>
-            <option value="15">15 min before</option>
-            <option value="30">30 min before</option>
-          </select>
-        </div>
-        <div class="field"><span class="label">Repeat</span>
-          <select id="tRepeat">
-            <option value="none" selected>Never</option><option value="daily">Every day</option>
-            <option value="weekdays">Weekdays</option><option value="weekly">Every week</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
-        <button class="btn btn-primary" id="tAdd">Create</button>
-        <span class="confirm" id="tConfirm"></span>
-      </div>
-    </div>
-
+    <div id="taskAsk" style="margin-bottom:14px"></div>
     <div class="card">
       ${upcoming.length ? upcoming.map(taskRow).join('') : '<div class="empty">No tasks yet.</div>'}
     </div>`;
 
-  document.getElementById('tAdd').addEventListener('click', addTask);
-  document.getElementById('tTitle').addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
+  mountTaskAsk();
 
   main.querySelectorAll('[data-del]').forEach((b) => {
     b.addEventListener('click', () => {
@@ -242,6 +311,20 @@ function viewTasks() {
       if (t) t.done = !t.done;
       save();
     });
+  });
+}
+
+function mountTaskAsk() {
+  const host = document.getElementById('taskAsk');
+  if (!host) return;
+  askFlow(host, {
+    onCreate: async (task) => {
+      data.tasks.push(task);
+      await invoke('save_data', { data });
+      await load();
+      render();
+    },
+    onCancel: () => mountTaskAsk()
   });
 }
 
@@ -266,7 +349,7 @@ function addTask() {
   const dur = document.getElementById('tDur').value;
 
   data.tasks.push({
-    id: crypto.randomUUID(),
+    id: newId(),
     title,
     date: document.getElementById('tDate').value || todayStr(),
     time,
@@ -327,7 +410,7 @@ function viewRoutine() {
     const title = document.getElementById('rTitle').value.trim();
     if (!title) return;
     data.routine.push({
-      id: crypto.randomUUID(),
+      id: newId(),
       title,
       emoji: document.getElementById('rEmoji').value || '•',
       time: document.getElementById('rTime').value || '09:00',
@@ -396,7 +479,7 @@ function viewGoals() {
     const title = document.getElementById('gTitle').value.trim();
     if (!title) return;
     data.goals.push({
-      id: crypto.randomUUID(),
+      id: newId(),
       title,
       emoji: document.getElementById('gEmoji').value || '🚀',
       weekly_target: document.getElementById('gWeekly').value.trim(),
@@ -465,7 +548,7 @@ function viewTeam() {
     const by = document.getElementById('mBy').value.trim() || 'a teammate';
     if (!title) return;
     data.tasks.push({
-      id: crypto.randomUUID(),
+      id: newId(),
       title,
       date: todayStr(),
       time: document.getElementById('mTime').value || '16:30',
@@ -623,9 +706,17 @@ function hhmm(mins) {
 // ---------------------------------------------------------------- shell
 
 const VIEWS = {
+  briefing: viewBriefing,
   today: viewToday, tasks: viewTasks, routine: viewRoutine,
   team: viewTeam, goals: viewGoals, settings: viewSettings
 };
+
+function setView(name) {
+  view = name;
+  document.querySelectorAll('.nav-item').forEach(x =>
+    x.classList.toggle('on', x.dataset.view === name));
+  render();
+}
 
 function render() { (VIEWS[view] || viewToday)(); }
 
@@ -638,7 +729,13 @@ document.querySelectorAll('.nav-item').forEach((b) => {
   });
 });
 
-load().then(render).catch((e) => {
+load()
+  .then(async () => {
+    // First launch of the day opens on the check-in instead of Today.
+    try { if (await invoke('needs_briefing')) view = 'briefing'; } catch (e) {}
+    render();
+  })
+  .catch((e) => {
   main.innerHTML = `<div class="empty">Couldn't load your data.<br><small>${esc(e)}</small></div>`;
 });
 

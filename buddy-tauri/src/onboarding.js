@@ -1,4 +1,5 @@
 import { installSprite, buddySvg, CHARACTERS } from './characters.js';
+import { newId } from './util.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -154,7 +155,7 @@ async function finish() {
   data.routine = [...picked.routine].map((i) => {
     const r = STARTER_ROUTINE[i];
     return {
-      id: crypto.randomUUID(),
+      id: newId(),
       title: r.title, emoji: r.emoji, time: r.time,
       days: [], enabled: true,
       completed_on: null, skipped_on: null, snoozed_until: null, fired_at: null
@@ -163,7 +164,7 @@ async function finish() {
 
   if (picked.task) {
     data.tasks.push({
-      id: crypto.randomUUID(),
+      id: newId(),
       title: picked.task,
       date: new Date().toLocaleDateString('en-CA'),
       time: picked.time,

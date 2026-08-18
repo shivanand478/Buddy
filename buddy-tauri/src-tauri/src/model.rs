@@ -224,6 +224,9 @@ pub struct AppData {
     pub last_rollover: Option<String>,
     #[serde(default)]
     pub last_weekly_review: Option<String>,
+    /// Date of the last morning check-in, so it runs once a day.
+    #[serde(default)]
+    pub last_briefing: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
