@@ -1,5 +1,6 @@
 // Stands in for the Tauri bridge so the UI can be inspected in a plain browser.
 const DATA = {
+  account: { email: '', verified: false, token: null, local_only: false },
   prefs: { name: "Shiv", character: "nub", quiet_start: 1380, quiet_end: 480,
            dismiss_seconds: 12, autostart: false, onboarded: true,
            focus_areas: ["Work","Fitness"], native_notifications: true },

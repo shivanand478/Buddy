@@ -18,6 +18,7 @@ ENTRY = {
     "index.html": ["characters.js", "util.js", "ask.js", "app.js"],
     "reminder.html": ["characters.js", "reminder.js"],
     "onboarding.html": ["characters.js", "util.js", "ask.js", "onboarding.js"],
+    "auth.html": ["characters.js", "util.js", "api.js", "auth.js"],
 }
 
 

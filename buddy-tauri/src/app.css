@@ -370,3 +370,22 @@ input:focus, select:focus { border-color: var(--accent); }
 }
 .opt:hover { border-color: var(--accent); background: var(--accent-soft); }
 .opt.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+/* Home's single call to action: the button that starts the day. */
+.cta {
+  width: 100%;
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 18px; margin-bottom: 14px;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease;
+}
+.cta:hover { background: var(--accent-soft); transform: translateY(-1px); box-shadow: 0 12px 24px -16px rgba(0,0,0,.45); }
+.cta:active { transform: none; }
+.cta-mark svg { width: 42px; height: 46px; display: block; }
+.cta-text { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.cta-t { font-weight: 700; font-size: 15.5px; letter-spacing: -.01em; }
+.cta-d { font-size: 12.5px; color: var(--text-mid); }
+.cta-go { font-size: 19px; color: var(--accent); flex: none; }

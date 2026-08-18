@@ -192,6 +192,27 @@ pub struct Goal {
     pub active: bool,
 }
 
+/// Who is signed in. `token` comes from the account server; `local_only` marks
+/// an account that was never verified against one, so the UI can say so instead
+/// of implying a verification that never happened.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Account {
+    #[serde(default)]
+    pub email: String,
+    #[serde(default)]
+    pub verified: bool,
+    #[serde(default)]
+    pub token: Option<String>,
+    #[serde(default)]
+    pub local_only: bool,
+}
+
+impl Account {
+    pub fn signed_in(&self) -> bool {
+        !self.email.trim().is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Prefs {
     #[serde(default)]
@@ -233,6 +254,8 @@ impl Default for Prefs {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AppData {
+    #[serde(default)]
+    pub account: Account,
     #[serde(default)]
     pub prefs: Prefs,
     #[serde(default)]

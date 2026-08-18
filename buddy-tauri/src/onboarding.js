@@ -1,6 +1,6 @@
 import { installSprite, buddySvg, CHARACTERS } from './characters.js';
-import { esc, newId, hhmmLabel, parseHHMM } from './util.js';
-import { askFlow, FOCUS_AREAS, suggestionsFor } from './ask.js';
+import { esc } from './util.js';
+import { FOCUS_AREAS } from './ask.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -9,14 +9,7 @@ installSprite();
 let data = null;
 let step = 0;
 
-const picked = {
-  name: '',
-  areas: [],
-  water: true,
-  checkin: false,
-  task: null,
-  autostart: true
-};
+const picked = { name: '', areas: [], autostart: true };
 
 const el = (id) => document.getElementById(id);
 
@@ -116,64 +109,7 @@ const SCREENS = [
     }
   }),
 
-  // 04 — the reminder system itself. Three switches, not twenty settings.
-  () => ({
-    html: `
-      <h2>When should Buddy check in?</h2>
-      <p class="sub">Gentle by default. Turn off anything that isn't for you.</p>
-      <div class="perm">
-        <div class="perm-row">
-          <div>
-            <div class="perm-t"><span class="pe">💧</span>Water &amp; small breaks</div>
-            <div class="perm-d">A nudge every 30 minutes to drink something and look away from the screen.</div>
-          </div>
-          <button class="switch ${picked.water ? 'on' : ''}" id="obWater"></button>
-        </div>
-        <div class="perm-row">
-          <div>
-            <div class="perm-t"><span class="pe">👋</span>Quick check-in</div>
-            <div class="perm-d">Every 2 hours I'll pop up with whatever is next. Skipped when something else is already due.</div>
-          </div>
-          <button class="switch ${picked.checkin ? 'on' : ''}" id="obCheckin"></button>
-        </div>
-        <div class="perm-row">
-          <div>
-            <div class="perm-t"><span class="pe">⏰</span>The things you schedule</div>
-            <div class="perm-d">I show up at the time you picked. This one's always on — it's the whole job.</div>
-          </div>
-          <span class="always">Always</span>
-        </div>
-      </div>`,
-    next: 'Continue',
-    onMount() {
-      el('obWater').addEventListener('click', () => {
-        picked.water = !picked.water;
-        el('obWater').classList.toggle('on', picked.water);
-      });
-      el('obCheckin').addEventListener('click', () => {
-        picked.checkin = !picked.checkin;
-        el('obCheckin').classList.toggle('on', picked.checkin);
-      });
-    }
-  }),
-
-  // 05 — the first reminder, made with the exact flow the app uses forever after.
-  () => ({
-    html: `
-      <h2>Create your first reminder.</h2>
-      <p class="sub">One thing is enough. This is the same four questions you'll answer every time.</p>
-      <div id="obAsk"></div>`,
-    hideFoot: true,
-    onMount() {
-      askFlow(el('obAsk'), {
-        suggestions: suggestionsFor(picked.areas),
-        onCreate: (task) => { picked.task = task; go(step + 1); },
-        onCancel: () => go(step + 1)
-      });
-    }
-  }),
-
-  // 06 — ready. Permissions land last, each with the reason attached, so they
+  // 04 — ready. Permissions land last, each with the reason attached, so they
   // are asked of someone who has already seen what they buy.
   () => ({
     html: `
@@ -200,13 +136,8 @@ const SCREENS = [
       </div>`,
     next: 'Start',
     onMount() {
-      const bits = [];
-      if (picked.task) bits.push(`${picked.task.title} at ${hhmmLabel(picked.task.time)}`);
-      if (picked.water) bits.push('water every 30 min');
-      if (picked.checkin) bits.push('a check-in every 2 hours');
-      el('obRecap').textContent = bits.length
-        ? 'I’ll be back for: ' + bits.join(', ') + '.'
-        : 'Add something whenever you’re ready — I’ll be in the menu bar.';
+      el('obRecap').textContent =
+        'Next: add what you need to do today, and I’ll show up when it’s time.';
 
       el('obAuto').addEventListener('click', () => {
         picked.autostart = !picked.autostart;
@@ -259,15 +190,6 @@ async function finish() {
   data.prefs.name = picked.name.trim();
   data.prefs.focus_areas = picked.areas.slice();
   data.prefs.onboarded = true;
-
-  data.water.enabled = picked.water;
-  data.water.every_minutes = 30;
-
-  data.check_in.enabled = picked.checkin;
-  data.check_in.every_minutes = 120;
-  data.check_in.last_fired = null;   // start the clock now, don't fire on launch
-
-  if (picked.task) data.tasks.push(picked.task);
 
   await invoke('save_data', { data });
   try { await invoke('set_autostart', { enabled: picked.autostart }); } catch (e) {}

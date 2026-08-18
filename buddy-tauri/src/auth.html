@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Buddy</title>
+  <link rel="stylesheet" href="app.css">
+  <style>
+    body { background: var(--bg); }
+    .wrap { height: 100vh; display: flex; flex-direction: column; }
+    .pane {
+      flex: 1; overflow-y: auto;
+      padding: 40px 36px 24px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 16px; text-align: center;
+    }
+    .pane h2 { font-size: 23px; }
+    .pane p.sub { margin: 0; color: var(--text-mid); font-family: var(--font-body); font-size: 14.5px; max-width: 38ch; }
+    .mark svg { width: 104px; height: 114px; }
+
+    .stack { display: flex; flex-direction: column; gap: 9px; width: 260px; margin-top: 6px; }
+    .stack .btn { width: 100%; justify-content: center; padding: 12px 16px; font-size: 14.5px; }
+
+    .email-in { width: 280px; font-size: 16px; padding: 13px 14px; text-align: center; }
+
+    /* six-digit code */
+    .code { display: flex; gap: 8px; margin-top: 4px; }
+    .code input {
+      width: 42px; height: 52px; padding: 0;
+      font-family: var(--font-mono); font-size: 21px; text-align: center;
+      border-radius: 10px;
+    }
+    .code input:focus { border-color: var(--accent); outline: none; }
+
+    .err {
+      color: var(--coral); font-size: 13px; min-height: 1.2em;
+      max-width: 34ch;
+    }
+    .linky {
+      background: none; border: 0; padding: 4px; cursor: pointer;
+      font: inherit; font-size: 13px; color: var(--text-dim); text-decoration: underline;
+    }
+    .linky:hover { color: var(--accent); }
+    .linky[disabled] { text-decoration: none; cursor: default; opacity: .6; }
+
+    .note {
+      max-width: 34ch; font-size: 12.5px; line-height: 1.5;
+      color: var(--text-dim);
+      border: 1px dashed var(--line); border-radius: 10px;
+      padding: 11px 13px; margin-top: 2px;
+    }
+    .foot {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 14px 22px; border-top: 1px solid var(--line);
+    }
+    .legal { font-size: 11.5px; color: var(--text-dim); max-width: 30ch; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="pane" id="pane"></div>
+    <div class="foot" id="foot">
+      <div class="legal" id="legal"></div>
+      <button class="btn btn-quiet" id="back" hidden>Back</button>
+    </div>
+  </div>
+  <script type="module" src="auth.js"></script>
+</body>
+</html>

@@ -146,6 +146,36 @@ fn finish_onboarding(app: AppHandle, state: tauri::State<'_, Buddy>) {
     show_main(&app);
 }
 
+/// Closes the sign-in window and hands off to whatever comes next.
+#[tauri::command]
+fn finish_auth(app: AppHandle, state: tauri::State<'_, Buddy>) {
+    let onboarded = state
+        .data
+        .lock()
+        .map(|d| d.prefs.onboarded)
+        .unwrap_or(false);
+    if let Some(win) = app.get_webview_window("auth") {
+        let _ = win.close();
+    }
+    if onboarded {
+        show_main(&app);
+    } else {
+        show_onboarding(&app);
+    }
+}
+
+#[tauri::command]
+fn sign_out(app: AppHandle, state: tauri::State<'_, Buddy>) {
+    if let Ok(mut d) = state.data.lock() {
+        d.account = Account::default();
+    }
+    state.persist();
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.close();
+    }
+    show_auth(&app);
+}
+
 #[tauri::command]
 fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
     use tauri_plugin_autostart::ManagerExt;
@@ -248,6 +278,20 @@ fn show_main(app: &AppHandle) {
         .build();
 }
 
+fn show_auth(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("auth") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        return;
+    }
+    let _ = WebviewWindowBuilder::new(app, "auth", WebviewUrl::App("auth.html".into()))
+        .title("Buddy")
+        .inner_size(460.0, 600.0)
+        .resizable(false)
+        .center()
+        .build();
+}
+
 fn show_onboarding(app: &AppHandle) {
     let _ = WebviewWindowBuilder::new(app, "onboarding", WebviewUrl::App("onboarding.html".into()))
         .title("Welcome to Buddy")
@@ -343,6 +387,8 @@ pub fn run() {
             close_reminder,
             open_main,
             finish_onboarding,
+            finish_auth,
+            sign_out,
             set_autostart,
             test_reminder,
             needs_briefing,
@@ -361,6 +407,7 @@ pub fn run() {
             let mut data = store::load(&path);
             scheduler::rollover(&mut data);
             let onboarded = data.prefs.onboarded;
+            let signed_in = data.account.signed_in();
             let data_last_briefing = data.last_briefing.clone();
             store::save(&path, &data);
 
@@ -372,7 +419,9 @@ pub fn run() {
 
             build_tray(&handle)?;
 
-            if !onboarded {
+            if !signed_in {
+                show_auth(&handle);
+            } else if !onboarded {
                 show_onboarding(&handle);
             } else if data_last_briefing.as_deref() != Some(today_string().as_str()) {
                 // First launch of the day (login, or a manual open): greet the

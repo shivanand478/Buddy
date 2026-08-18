@@ -34,6 +34,7 @@ async function load() {
   data = await invoke('get_data');
   data.check_in = data.check_in || { enabled: false, every_minutes: 120, last_fired: null, snoozed_until: null };
   data.prefs.focus_areas = normalizeAreas(data.prefs.focus_areas);
+  data.account = data.account || { email: '', verified: false, token: null, local_only: false };
   document.getElementById('sideChar').setAttribute('href', `#c-${data.prefs.character}`);
 }
 
@@ -107,6 +108,19 @@ function viewToday() {
       <p>${open.length ? `You've got ${open.length} thing${open.length === 1 ? '' : 's'} today.` : 'Nothing left today. Enjoy it.'}</p>
     </div>`;
 
+  // The one thing Home asks of you. Everything else on this screen is a report.
+  html += `
+    <button class="cta" id="ctaTodo">
+      <span class="cta-mark">${buddySvg(data.prefs.character)}</span>
+      <span class="cta-text">
+        <span class="cta-t">Create today's to-do</span>
+        <span class="cta-d">${tasksToday.length
+          ? 'Add another thing, or change what’s already there.'
+          : 'Tell me what needs doing and when — I’ll handle the rest.'}</span>
+      </span>
+      <span class="cta-go">→</span>
+    </button>`;
+
   if (next) {
     html += `
       <div class="next-up">
@@ -131,6 +145,7 @@ function viewToday() {
   }
 
   main.innerHTML = html;
+  document.getElementById('ctaTodo').addEventListener('click', () => setView('tasks'));
   wireRows();
 }
 
@@ -590,6 +605,7 @@ function viewTeam() {
 
 function viewSettings() {
   const p = data.prefs;
+  const acct = data.account || { email: '', verified: false, local_only: false };
   main.innerHTML = `
     <div class="view-head"><h1>Settings</h1></div>
 
@@ -602,6 +618,19 @@ function viewSettings() {
             <span class="n">${c.name}</span>
             <span class="r">${c.role}</span>
           </button>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="label">Account</span>
+      <div class="toggle-row">
+        <div>
+          <div class="t">${esc(acct.email || 'Not signed in')}</div>
+          <div class="d">${acct.local_only
+            ? 'Stored on this computer only — not verified, no account server yet.'
+            : acct.verified ? 'Email verified.' : 'Not verified.'}</div>
+        </div>
+        <button class="btn" id="sSignOut">Sign out</button>
       </div>
     </div>
 
@@ -696,6 +725,8 @@ function viewSettings() {
     data.prefs.character = b.dataset.char;
     save();
   }));
+
+  document.getElementById('sSignOut').addEventListener('click', () => invoke('sign_out'));
 
   document.getElementById('sName').addEventListener('change', (e) => {
     data.prefs.name = e.target.value.trim();
