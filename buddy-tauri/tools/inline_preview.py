@@ -17,7 +17,7 @@ PREVIEW = ROOT / ".preview"
 ENTRY = {
     "index.html": ["characters.js", "util.js", "ask.js", "app.js"],
     "reminder.html": ["characters.js", "reminder.js"],
-    "onboarding.html": ["characters.js", "util.js", "onboarding.js"],
+    "onboarding.html": ["characters.js", "util.js", "ask.js", "onboarding.js"],
 }
 
 
@@ -40,9 +40,11 @@ def build(name: str) -> Path:
         '<link rel="stylesheet" href="app.css">', f"<style>\n{css}\n</style>"
     )
     # replace the module tag with everything, inlined
+    # lambda repl: the JS is literal text, not a regex template — backslashes
+    # in the source must not be read as escape sequences.
     html = re.sub(
         r'<script type="module"[^>]*></script>',
-        f"<script>\n{stub}\n</script>\n<script>\n{js}\n</script>",
+        lambda _m: f"<script>\n{stub}\n</script>\n<script>\n{js}\n</script>",
         html,
     )
 

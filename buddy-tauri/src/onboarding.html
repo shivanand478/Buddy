@@ -21,19 +21,55 @@
     .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
     .dot.on { background: var(--accent); }
 
-    .areas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
-    .area {
-      padding: 11px 12px; border-radius: 10px; text-align: left;
-      background: var(--surface-2); border: 1.5px solid transparent;
-      font-weight: 500; font-size: 13.5px; color: var(--text);
+    /* the inline reminder mock */
+    .demo-stage {
+      width: 100%;
+      background: var(--bg-alt);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      min-height: 118px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+      overflow: hidden;
     }
-    .area.on { background: var(--sage-soft); border-color: var(--sage); }
+    .demo-pop {
+      display: flex; align-items: flex-end; gap: 8px;
+      opacity: 0; transform: translateY(14px) scale(.95);
+      transition: opacity .3s ease, transform .45s cubic-bezier(.18,1.4,.42,1);
+    }
+    .demo-pop.in { opacity: 1; transform: none; }
+    .demo-pop svg { width: 52px; height: 57px; flex: none; }
+    .demo-bubble {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 12px; padding: 10px 12px;
+      box-shadow: 0 14px 30px -14px rgba(0,0,0,.4);
+    }
+    .demo-kind { font-family: var(--font-mono); font-size: 9px; letter-spacing: .12em; color: var(--text-dim); }
+    .demo-msg { font-weight: 700; font-size: 13.5px; margin-top: 4px; letter-spacing: -.02em; }
+    .demo-acts { display: flex; gap: 5px; margin-top: 9px; }
+    .demo-acts span {
+      font-size: 10.5px; font-weight: 600; padding: 4px 9px;
+      border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line);
+    }
+    .demo-acts span.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+    /* permission rows */
+    .perm { width: 100%; display: flex; flex-direction: column; gap: 4px; }
+    .perm-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 0; border-bottom: 1px dashed var(--line-soft);
+    }
+    .perm-row:last-child { border-bottom: 0; }
+    .perm-t { font-weight: 600; font-size: 14px; }
+    .perm-d { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; max-width: 34ch; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="step" id="step"></div>
-    <div class="foot">
+    <div class="foot" id="foot">
       <div class="dots" id="dots"></div>
       <button class="btn btn-quiet" id="back" hidden>Back</button>
       <button class="btn btn-primary" id="next">Continue</button>
