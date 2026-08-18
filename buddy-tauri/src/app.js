@@ -1,6 +1,7 @@
 import { installSprite, buddySvg, checkSvg, CHARACTERS } from './characters.js';
 import { askFlow, FOCUS_AREAS, suggestionsFor, normalizeAreas } from './ask.js';
 import { esc, todayStr, nowMinutes, parseHHMM, label, newId } from './util.js';
+import { signOut } from './api.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -726,7 +727,10 @@ function viewSettings() {
     save();
   }));
 
-  document.getElementById('sSignOut').addEventListener('click', () => invoke('sign_out'));
+  document.getElementById('sSignOut').addEventListener('click', async () => {
+    await signOut(data.account && data.account.token);
+    await invoke('sign_out');
+  });
 
   document.getElementById('sName').addEventListener('change', (e) => {
     data.prefs.name = e.target.value.trim();

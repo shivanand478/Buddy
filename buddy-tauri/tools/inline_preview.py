@@ -15,7 +15,7 @@ SRC = ROOT / "src"
 PREVIEW = ROOT / ".preview"
 
 ENTRY = {
-    "index.html": ["characters.js", "util.js", "ask.js", "app.js"],
+    "index.html": ["characters.js", "util.js", "api.js", "ask.js", "app.js"],
     "reminder.html": ["characters.js", "reminder.js"],
     "onboarding.html": ["characters.js", "util.js", "ask.js", "onboarding.js"],
     "auth.html": ["characters.js", "util.js", "api.js", "auth.js"],
@@ -24,7 +24,10 @@ ENTRY = {
 
 def strip_module(text: str) -> str:
     text = re.sub(r"^\s*import\s+.*?;\s*$", "", text, flags=re.M | re.S)
-    text = re.sub(r"^\s*export\s+(const|function|let|var)\s", r"\1 ", text, flags=re.M)
+    # `export async function` and `export function` both have to survive the
+    # strip, and an unhandled one kills the whole concatenated script.
+    text = re.sub(r"^\s*export\s+(default\s+)?(async\s+)?(const|function|let|var|class)\s",
+                  lambda m: (m.group(2) or "") + m.group(3) + " ", text, flags=re.M)
     text = re.sub(r"^\s*export\s*\{[^}]*\};?\s*$", "", text, flags=re.M)
     return text
 

@@ -41,3 +41,12 @@ export function requestCode(email) {
 export function verifyCode(email, code) {
   return post('/auth/verify', { email: email.trim().toLowerCase(), code: String(code).trim() });
 }
+
+/** Ends the session server-side too, so a stolen token stops working. */
+export async function signOut(token) {
+  if (!AUTH_BASE || !token) return;
+  await fetch(AUTH_BASE + '/auth/sign-out', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token }
+  }).catch(() => { /* signing out locally still has to succeed */ });
+}
