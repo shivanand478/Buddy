@@ -68,7 +68,7 @@ function render(list) {
 }
 
 function kindLabel(k) {
-  return { task: 'Task', routine: 'Routine', water: 'Water', goal: 'Goal', team: 'Team task', review: 'Weekly' }[k] || 'Reminder';
+  return { task: 'Task', routine: 'Routine', water: 'Water', goal: 'Goal', team: 'Team task', review: 'Weekly', checkin: 'Check-in' }[k] || 'Reminder';
 }
 
 function escape(s) {

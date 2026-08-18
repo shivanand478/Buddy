@@ -61,6 +61,7 @@ fn complete_item(state: tauri::State<'_, Buddy>, id: String, kind: String) {
                 d.water.count_today += 1;
                 d.water.last_fired = Some(now_ts());
             }
+            "checkin" => d.check_in.last_fired = Some(now_ts()),
             "routine" => {
                 if let Some(r) = d.routine.iter_mut().find(|r| r.id == id) {
                     r.completed_on = Some(today);
@@ -104,6 +105,7 @@ fn snooze_item(state: tauri::State<'_, Buddy>, id: String, kind: String, minutes
     if let Ok(mut d) = state.data.lock() {
         match kind.as_str() {
             "water" => d.water.snoozed_until = Some(until),
+            "checkin" => d.check_in.snoozed_until = Some(until),
             "routine" => {
                 if let Some(r) = d.routine.iter_mut().find(|r| r.id == id) {
                     r.snoozed_until = Some(until);

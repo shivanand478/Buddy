@@ -19,12 +19,15 @@ const DATA = {
     { id:"r2", title:"Lunch", emoji:"🍱", time:"13:30", days:[], enabled:true, completed_on:null }
   ],
   water: { enabled:true, every_minutes:60, count_today:3 },
+  check_in: { enabled:false, every_minutes:120, last_fired:null, snoozed_until:null },
   goals: [ { id:"g1", title:"Build a SaaS", emoji:"🚀", weekly_target:"Work on it 5 hours",
              today_action:"30 minutes on the landing page", today_time:"20:00", active:true } ],
   history: []
 };
+window.__CALLS__ = [];
 window.__TAURI__ = {
   core: { invoke: async (cmd, args) => {
+    window.__CALLS__.push({ cmd, args: args ? JSON.parse(JSON.stringify(args)) : null });
     if (cmd === 'get_data') return JSON.parse(JSON.stringify(DATA));
     if (cmd === 'get_pending') return [
       { id:"2", kind:"task", title:"Time to create content.", time_label:"7:00 PM",

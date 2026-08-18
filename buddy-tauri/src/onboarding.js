@@ -1,6 +1,6 @@
 import { installSprite, buddySvg, CHARACTERS } from './characters.js';
 import { esc, newId, hhmmLabel, parseHHMM } from './util.js';
-import { askFlow } from './ask.js';
+import { askFlow, FOCUS_AREAS, suggestionsFor } from './ask.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -8,11 +8,19 @@ installSprite();
 
 let data = null;
 let step = 0;
-const picked = { name: '', dayStart: '08:00', windDown: '22:30', task: null, autostart: true };
+
+const picked = {
+  name: '',
+  areas: [],
+  water: true,
+  checkin: false,
+  task: null,
+  autostart: true
+};
 
 const el = (id) => document.getElementById(id);
 
-// A reminder mock, so the value is visible before anything is asked of the user.
+// A reminder mock, so the character choice is shown doing its actual job.
 function demoMarkup(char) {
   return `
     <div class="demo-stage">
@@ -38,44 +46,31 @@ function playDemo() {
 }
 
 const SCREENS = [
-  // 1 — who are you? (asked first because every later screen uses it)
+  // 01 — Meet Buddy. The product introduces itself before it asks anything.
   () => ({
+    center: true,
     html: `
-      <div class="step center">
-        ${buddySvg(data.prefs.character)}
-        <h2>Hi — I'm Buddy.</h2>
-        <p class="sub">I'll remember the things you don't want to forget.<br>What should I call you?</p>
-        <input id="obName" placeholder="Your name" value="${esc(picked.name)}"
-               style="width:220px;font-size:17px;padding:12px 14px;text-align:center" autocomplete="off">
-      </div>`,
-    next: 'Continue',
+      <div class="hero-buddy">${buddySvg(data.prefs.character)}</div>
+      <h2>Meet your new Buddy.</h2>
+      <p class="sub">I'll remind you when it's time to get things done.<br>
+      Tasks, routines, goals — you tell me when. I'll remember.</p>
+      <input id="obName" placeholder="What should I call you?" value="${esc(picked.name)}"
+             style="width:240px;font-size:16px;padding:12px 14px;text-align:center" autocomplete="off">`,
+    next: "Let's get started →",
     onMount() {
       const i = el('obName');
       i.focus();
       i.addEventListener('input', (e) => { picked.name = e.target.value; });
+      i.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(step + 1); });
     }
   }),
 
-  // 2 — show the product working, before asking for anything
+  // 02 — Pick your Buddy. The character is the identity of the product, so it
+  // gets a screen of its own and is shown doing the one thing it does.
   () => ({
     html: `
-      <h2>This is the whole app.</h2>
-      <p class="sub">I stay hidden. When something's due I appear in the corner
-      for a few seconds, you deal with it, and I'm gone.</p>
-      ${demoMarkup(data.prefs.character)}
-      <button class="btn" id="replay" style="align-self:flex-start">Show me again</button>`,
-    next: 'Makes sense',
-    onMount() {
-      setTimeout(playDemo, 350);
-      el('replay').addEventListener('click', playDemo);
-    }
-  }),
-
-  // 3 — now the character choice means something: it's who shows up
-  () => ({
-    html: `
-      <h2>So who should show up?</h2>
-      <p class="sub">Pick the one you won't mind seeing every day.</p>
+      <h2>Pick your Buddy.</h2>
+      <p class="sub">You'll see them whenever it's time for a reminder.</p>
       <div class="char-grid" style="width:100%">
         ${CHARACTERS.map((c) => `
           <button class="char-pick ${data.prefs.character === c.id ? 'on' : ''}" data-char="${c.id}">
@@ -84,88 +79,135 @@ const SCREENS = [
             <span class="r">${c.role}</span>
           </button>`).join('')}
       </div>
-      <p class="sub" id="charLine" style="font-style:italic;min-height:1.4em"></p>
+      <p class="sub" id="charLine" style="font-style:italic;min-height:1.4em;margin-top:-4px"></p>
       ${demoMarkup(data.prefs.character)}`,
-    next: 'Continue',
+    next: 'This one →',
     onMount() {
-      const line = el('charLine');
       const c = CHARACTERS.find((x) => x.id === data.prefs.character);
-      if (c) line.textContent = `"${c.line}"`;
+      if (c) el('charLine').textContent = `"${c.line}"`;
       setTimeout(playDemo, 300);
       el('step').querySelectorAll('[data-char]').forEach((b) =>
+        b.addEventListener('click', () => { data.prefs.character = b.dataset.char; render(); }));
+    }
+  }),
+
+  // 03 — What should Buddy help with? Not a life-setup form: this only decides
+  // which starter suggestions show up on the next screen and in the Tasks view.
+  () => ({
+    html: `
+      <h2>What should Buddy help you with?</h2>
+      <p class="sub">Pick whatever matters to you. You can change this anytime.</p>
+      <div class="focus-grid">
+        ${FOCUS_AREAS.map((a) => `
+          <button class="focus-card ${picked.areas.includes(a.id) ? 'on' : ''}" data-area="${a.id}">
+            <span class="e">${a.emoji}</span>
+            <span class="t">${a.name}</span>
+          </button>`).join('')}
+      </div>`,
+    next: 'Continue',
+    onMount() {
+      el('step').querySelectorAll('[data-area]').forEach((b) =>
         b.addEventListener('click', () => {
-          data.prefs.character = b.dataset.char;
-          render();
+          const id = b.dataset.area;
+          const i = picked.areas.indexOf(id);
+          if (i === -1) picked.areas.push(id); else picked.areas.splice(i, 1);
+          b.classList.toggle('on', picked.areas.includes(id));
         }));
     }
   }),
 
-  // 4 — one question that configures quiet hours AND the morning check-in
+  // 04 — the reminder system itself. Three switches, not twenty settings.
   () => ({
     html: `
-      <h2>When is your day?</h2>
-      <p class="sub">I'll check in with you when it starts, and go quiet after it ends.
-      Nothing will ever wake you up.</p>
-      <div style="display:flex;gap:22px;margin-top:6px">
-        <label class="field" style="gap:6px">
-          <span class="label">My day starts</span>
-          <input type="time" id="obStart" value="${picked.dayStart}" style="font-size:17px;padding:11px 13px">
-        </label>
-        <label class="field" style="gap:6px">
-          <span class="label">I wind down</span>
-          <input type="time" id="obEnd" value="${picked.windDown}" style="font-size:17px;padding:11px 13px">
-        </label>
-      </div>
-      <p class="sub" id="quietEcho" style="font-family:var(--font-mono);font-size:12px"></p>`,
+      <h2>When should Buddy check in?</h2>
+      <p class="sub">Gentle by default. Turn off anything that isn't for you.</p>
+      <div class="perm">
+        <div class="perm-row">
+          <div>
+            <div class="perm-t"><span class="pe">💧</span>Water &amp; small breaks</div>
+            <div class="perm-d">A nudge every 30 minutes to drink something and look away from the screen.</div>
+          </div>
+          <button class="switch ${picked.water ? 'on' : ''}" id="obWater"></button>
+        </div>
+        <div class="perm-row">
+          <div>
+            <div class="perm-t"><span class="pe">👋</span>Quick check-in</div>
+            <div class="perm-d">Every 2 hours I'll pop up with whatever is next. Skipped when something else is already due.</div>
+          </div>
+          <button class="switch ${picked.checkin ? 'on' : ''}" id="obCheckin"></button>
+        </div>
+        <div class="perm-row">
+          <div>
+            <div class="perm-t"><span class="pe">⏰</span>The things you schedule</div>
+            <div class="perm-d">I show up at the time you picked. This one's always on — it's the whole job.</div>
+          </div>
+          <span class="always">Always</span>
+        </div>
+      </div>`,
     next: 'Continue',
     onMount() {
-      const echo = () => {
-        el('quietEcho').textContent =
-          `Quiet from ${hhmmLabel(picked.windDown)} to ${hhmmLabel(picked.dayStart)}`;
-      };
-      el('obStart').addEventListener('change', (e) => { picked.dayStart = e.target.value; echo(); });
-      el('obEnd').addEventListener('change', (e) => { picked.windDown = e.target.value; echo(); });
-      echo();
+      el('obWater').addEventListener('click', () => {
+        picked.water = !picked.water;
+        el('obWater').classList.toggle('on', picked.water);
+      });
+      el('obCheckin').addEventListener('click', () => {
+        picked.checkin = !picked.checkin;
+        el('obCheckin').classList.toggle('on', picked.checkin);
+      });
     }
   }),
 
-  // 5 — the first task, using the same flow the app uses forever after
+  // 05 — the first reminder, made with the exact flow the app uses forever after.
   () => ({
     html: `
-      <h2>What's one thing you need to do today?</h2>
-      <p class="sub">Just one. Buddy works best when today is small.</p>
+      <h2>Create your first reminder.</h2>
+      <p class="sub">One thing is enough. This is the same four questions you'll answer every time.</p>
       <div id="obAsk"></div>`,
     hideFoot: true,
     onMount() {
       askFlow(el('obAsk'), {
+        suggestions: suggestionsFor(picked.areas),
         onCreate: (task) => { picked.task = task; go(step + 1); },
         onCancel: () => go(step + 1)
       });
     }
   }),
 
-  // 6 — permissions, primed with the reason, last so they're already invested
+  // 06 — ready. Permissions land last, each with the reason attached, so they
+  // are asked of someone who has already seen what they buy.
   () => ({
     html: `
-      <h2>Two last things.</h2>
+      <div class="ready-head">
+        <div class="hero-buddy small">${buddySvg(data.prefs.character)}</div>
+        <h2>You're ready${picked.name.trim() ? ', ' + esc(picked.name.trim()) : ''}.</h2>
+        <p class="sub" id="obRecap"></p>
+      </div>
       <div class="perm">
         <div class="perm-row">
           <div>
             <div class="perm-t">Open Buddy when I start my computer</div>
-            <div class="perm-d">This is how I'm there in the morning without you opening anything.</div>
+            <div class="perm-d">This is how I'm already there in the morning, without you opening anything.</div>
           </div>
           <button class="switch ${picked.autostart ? 'on' : ''}" id="obAuto"></button>
         </div>
         <div class="perm-row">
           <div>
             <div class="perm-t">Allow notifications</div>
-            <div class="perm-d">A backup for when you're in full screen and can't see the corner.</div>
+            <div class="perm-d">A backup for when you're full screen and can't see the corner.</div>
           </div>
           <button class="btn" id="obNotif">Allow</button>
         </div>
       </div>`,
     next: 'Start',
     onMount() {
+      const bits = [];
+      if (picked.task) bits.push(`${picked.task.title} at ${hhmmLabel(picked.task.time)}`);
+      if (picked.water) bits.push('water every 30 min');
+      if (picked.checkin) bits.push('a check-in every 2 hours');
+      el('obRecap').textContent = bits.length
+        ? 'I’ll be back for: ' + bits.join(', ') + '.'
+        : 'Add something whenever you’re ready — I’ll be in the menu bar.';
+
       el('obAuto').addEventListener('click', () => {
         picked.autostart = !picked.autostart;
         el('obAuto').classList.toggle('on', picked.autostart);
@@ -177,11 +219,11 @@ const SCREENS = [
           let granted = await n.isPermissionGranted();
           if (!granted) granted = (await n.requestPermission()) === 'granted';
           btn.textContent = granted ? 'Allowed ✓' : 'Not allowed';
-          btn.disabled = true;
+          data.prefs.native_notifications = granted;
         } catch (e) {
           btn.textContent = 'Skipped';
-          btn.disabled = true;
         }
+        btn.disabled = true;
       });
     }
   })
@@ -196,10 +238,8 @@ function render() {
   const s = SCREENS[step]();
   const host = el('step');
 
-  host.className = 'step' + (s.html.includes('class="step center"') ? ' center' : '');
-  host.innerHTML = s.html.includes('<div class="step')
-    ? s.html.replace(/^\s*<div class="step[^"]*">|<\/div>\s*$/g, '')
-    : s.html;
+  host.className = 'step' + (s.center ? ' center' : '');
+  host.innerHTML = s.html;
 
   el('dots').innerHTML = SCREENS.map((_, i) => `<span class="dot ${i === step ? 'on' : ''}"></span>`).join('');
   el('back').hidden = step === 0;
@@ -217,10 +257,15 @@ el('back').addEventListener('click', () => go(step - 1));
 
 async function finish() {
   data.prefs.name = picked.name.trim();
+  data.prefs.focus_areas = picked.areas.slice();
   data.prefs.onboarded = true;
-  // The single "when is your day" answer drives both ends of quiet hours.
-  data.prefs.quiet_end = parseHHMM(picked.dayStart) ?? 8 * 60;
-  data.prefs.quiet_start = parseHHMM(picked.windDown) ?? 23 * 60;
+
+  data.water.enabled = picked.water;
+  data.water.every_minutes = 30;
+
+  data.check_in.enabled = picked.checkin;
+  data.check_in.every_minutes = 120;
+  data.check_in.last_fired = null;   // start the clock now, don't fire on launch
 
   if (picked.task) data.tasks.push(picked.task);
 
@@ -232,4 +277,8 @@ async function finish() {
   await invoke('finish_onboarding');
 }
 
-invoke('get_data').then((d) => { data = d; render(); });
+invoke('get_data').then((d) => {
+  data = d;
+  data.check_in = data.check_in || { enabled: false, every_minutes: 120, last_fired: null, snoozed_until: null };
+  render();
+});

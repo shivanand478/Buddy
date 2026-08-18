@@ -1,5 +1,5 @@
 import { installSprite, buddySvg, checkSvg, CHARACTERS } from './characters.js';
-import { askFlow } from './ask.js';
+import { askFlow, FOCUS_AREAS, suggestionsFor, normalizeAreas } from './ask.js';
 import { esc, todayStr, nowMinutes, parseHHMM, label, newId } from './util.js';
 
 const { invoke } = window.__TAURI__.core;
@@ -32,6 +32,8 @@ const weekdayNow = () => (new Date().getDay() + 6) % 7 + 1;
 
 async function load() {
   data = await invoke('get_data');
+  data.check_in = data.check_in || { enabled: false, every_minutes: 120, last_fired: null, snoozed_until: null };
+  data.prefs.focus_areas = normalizeAreas(data.prefs.focus_areas);
   document.getElementById('sideChar').setAttribute('href', `#c-${data.prefs.character}`);
 }
 
@@ -263,10 +265,17 @@ function settle(btn, note) {
   row.appendChild(tag);
 }
 
+/// Starter chips from `prefs.focus_areas`, only while there's little to look at.
+function starters() {
+  if (data.tasks.filter((t) => t.open !== false && !t.done).length >= 3) return [];
+  return suggestionsFor(data.prefs.focus_areas || []);
+}
+
 function mountBriefAsk() {
   const host = document.getElementById('briefAsk');
   if (!host) return;
   askFlow(host, {
+    suggestions: starters(),
     onCreate: async (task) => {
       data.tasks.push(task);
       await invoke('save_data', { data });
@@ -318,6 +327,7 @@ function mountTaskAsk() {
   const host = document.getElementById('taskAsk');
   if (!host) return;
   askFlow(host, {
+    suggestions: starters(),
     onCreate: async (task) => {
       data.tasks.push(task);
       await invoke('save_data', { data });
@@ -619,6 +629,31 @@ function viewSettings() {
     </div>
 
     <div class="card">
+      <span class="label">Quick check-in</span>
+      <div class="toggle-row">
+        <div><div class="t">Pop up now and then with what's next</div>
+          <div class="d">Skipped whenever a real reminder is already due.</div></div>
+        <button class="switch ${data.check_in.enabled ? 'on' : ''}" id="sCheckin"></button>
+      </div>
+      <div class="toggle-row">
+        <div class="t">How often</div>
+        <select id="sCheckinEvery" style="width:130px">
+          ${[60, 120, 180, 240].map((m) => `<option value="${m}" ${data.check_in.every_minutes === m ? 'selected' : ''}>Every ${m / 60} h</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="label">What Buddy helps with</span>
+      <div class="d" style="font-size:12.5px;color:var(--text-dim);margin:6px 0 10px">
+        Only decides which suggestions you're offered when adding something.
+      </div>
+      <div class="chips">
+        ${FOCUS_AREAS.map((a) => `<button class="chip ${(p.focus_areas || []).includes(a.id) ? 'on' : ''}" data-area="${a.id}">${a.emoji} ${a.name}</button>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
       <span class="label">Quiet hours</span>
       <div class="toggle-row">
         <div><div class="t">Don't interrupt between</div>
@@ -674,6 +709,21 @@ function viewSettings() {
     data.water.every_minutes = Number(e.target.value);
     save();
   });
+  document.getElementById('sCheckin').addEventListener('click', () => {
+    data.check_in.enabled = !data.check_in.enabled;
+    data.check_in.last_fired = null;   // restart the clock, don't fire at once
+    save();
+  });
+  document.getElementById('sCheckinEvery').addEventListener('change', (e) => {
+    data.check_in.every_minutes = Number(e.target.value);
+    save();
+  });
+  main.querySelectorAll('[data-area]').forEach((b) => b.addEventListener('click', () => {
+    const areas = data.prefs.focus_areas || (data.prefs.focus_areas = []);
+    const i = areas.indexOf(b.dataset.area);
+    if (i === -1) areas.push(b.dataset.area); else areas.splice(i, 1);
+    save();
+  }));
   document.getElementById('sQs').addEventListener('change', (e) => {
     data.prefs.quiet_start = parseHHMM(e.target.value) ?? 1380;
     save();

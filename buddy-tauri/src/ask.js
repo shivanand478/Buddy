@@ -3,6 +3,54 @@ import { esc, hhmmLabel, newId } from './util.js';
 // instead of filling in a form. Same flow is used by the morning check-in and
 // the Tasks view.
 
+/// What Buddy can help with. Stored on `prefs.focus_areas` and read back to
+/// decide which starter suggestions to offer — the only thing it is ever for.
+export const FOCUS_AREAS = [
+  { id: 'work',     emoji: '💼', name: 'Work',
+    ideas: ['Clear my inbox', 'Write the weekly update', 'Prep for standup'] },
+  { id: 'fitness',  emoji: '🏋️', name: 'Fitness',
+    ideas: ['Go to the gym', '30 minute walk', 'Stretch for 10 minutes'] },
+  { id: 'personal', emoji: '💡', name: 'Personal goals',
+    ideas: ['Read 20 pages', 'Practice for 30 minutes', 'Call home'] },
+  { id: 'content',  emoji: '🎥', name: 'Content',
+    ideas: ['Film one video', "Edit today's clip", 'Write three hooks'] },
+  { id: 'business', emoji: '🚀', name: 'Business',
+    ideas: ['Follow up with a lead', 'Review this week’s numbers', 'Send the invoice'] },
+  { id: 'study',    emoji: '📚', name: 'Study',
+    ideas: ['One hour of revision', 'Finish the problem set', 'Re-read my notes'] },
+  { id: 'routine',  emoji: '🧘', name: 'Routine',
+    ideas: ['Morning stretch', 'Tidy the desk', 'Wind down for bed'] }
+];
+
+/// Older builds stored display labels ("Work"); ids are what we match on now.
+export function normalizeAreas(areas = []) {
+  const byName = {};
+  FOCUS_AREAS.forEach((a) => { byName[a.name.toLowerCase()] = a.id; });
+  const ids = new Set(FOCUS_AREAS.map((a) => a.id));
+  const out = [];
+  areas.forEach((v) => {
+    const key = String(v).toLowerCase();
+    const id = ids.has(key) ? key : byName[key];
+    if (id && !out.includes(id)) out.push(id);
+  });
+  return out;
+}
+
+/// One idea per selected area, so the chips stay scannable.
+export function suggestionsFor(areaIds = []) {
+  const out = [];
+  areaIds.forEach((id) => {
+    const a = FOCUS_AREAS.find((x) => x.id === id);
+    if (a) out.push(a.ideas[0]);
+  });
+  // A second idea from the first area, when only one or two were picked.
+  if (out.length && out.length < 3) {
+    const a = FOCUS_AREAS.find((x) => x.id === areaIds[0]);
+    if (a) a.ideas.slice(1, 3).forEach((t) => { if (!out.includes(t)) out.push(t); });
+  }
+  return out.slice(0, 4);
+}
+
 const TIME_CHOICES = [
   ['Morning',   '09:00'], ['Midday',  '12:00'], ['Afternoon', '15:00'],
   ['Late day',  '17:00'], ['Evening', '19:00'], ['Night',     '21:00']
@@ -15,14 +63,19 @@ const OFFSETS = [['At the time', 0], ['15 min before', 15], ['30 min before', 30
  * Renders the flow into `host`. Calls onCreate(task) when the last answer lands,
  * and onCancel() if the user backs out of the first question.
  */
-export function askFlow(host, { onCreate, onCancel, prefillTitle = '' } = {}) {
+export function askFlow(host, { onCreate, onCancel, prefillTitle = '', suggestions = [] } = {}) {
   const draft = { title: prefillTitle, date: 'today', time: '', duration: undefined, offset: 0 };
   let step = prefillTitle ? 1 : 0;
 
   const steps = [
     () => `
       <div class="ask-q">What do you want to do?</div>
-      <input class="ask-input" id="askTitle" placeholder="Finish the homepage" value="${esc(draft.title)}" autocomplete="off">`,
+      <input class="ask-input" id="askTitle" placeholder="Finish the homepage" value="${esc(draft.title)}" autocomplete="off">
+      ${suggestions.length ? `
+        <div class="label" style="margin-top:14px">Or start with one of these</div>
+        <div class="chips" style="margin-top:7px">
+          ${suggestions.map((t) => `<button class="chip" data-sug="${esc(t)}">${esc(t)}</button>`).join('')}
+        </div>` : ''}`,
 
     () => `
       <div class="ask-recap">${esc(draft.title)}</div>
@@ -77,6 +130,9 @@ export function askFlow(host, { onCreate, onCancel, prefillTitle = '' } = {}) {
       title.addEventListener('input', (e) => { draft.title = e.target.value; });
       title.addEventListener('keydown', (e) => { if (e.key === 'Enter') advance(); });
     }
+
+    host.querySelectorAll('[data-sug]').forEach((b) =>
+      b.addEventListener('click', () => { draft.title = b.dataset.sug; advance(); }));
 
     host.querySelectorAll('[data-date]').forEach((b) =>
       b.addEventListener('click', () => { draft.date = b.dataset.date; render(); }));

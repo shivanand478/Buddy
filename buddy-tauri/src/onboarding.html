@@ -11,7 +11,35 @@
     .step.center { align-items: center; justify-content: center; text-align: center; }
     .step h2 { font-size: 24px; }
     .step p.sub { margin: 0; color: var(--text-mid); font-family: var(--font-body); font-size: 15px; max-width: 42ch; }
-    .step > svg { width: 130px; height: 143px; }
+    .hero-buddy svg { width: 132px; height: 145px; }
+    .hero-buddy.small svg { width: 76px; height: 84px; }
+    .ready-head { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+
+    /* what should Buddy help with — multi-select */
+    .focus-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .focus-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 13px 14px; text-align: left;
+      background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
+      cursor: pointer; font: inherit; color: inherit;
+      transition: background .12s ease, border-color .12s ease;
+    }
+    .focus-card:hover { border-color: var(--accent); }
+    .focus-card .e { font-size: 19px; line-height: 1; }
+    .focus-card .t { font-weight: 600; font-size: 14px; }
+    .focus-card.on { background: var(--accent-soft); border-color: var(--accent); }
+
+    .always {
+      font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--sage);
+      border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px;
+      white-space: nowrap;
+    }
 
     .foot {
       display: flex; align-items: center; gap: 10px;
@@ -63,7 +91,8 @@
     }
     .perm-row:last-child { border-bottom: 0; }
     .perm-t { font-weight: 600; font-size: 14px; }
-    .perm-d { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; max-width: 34ch; }
+    .perm-d { font-size: 12.5px; color: var(--text-dim); margin-top: 3px; max-width: 46ch; }
+    .pe { margin-right: 8px; }
   </style>
 </head>
 <body>

@@ -140,6 +140,35 @@ pub fn collect_due(data: &mut AppData) -> Vec<DueItem> {
         });
     }
 
+    // ---- the periodic check-in -------------------------------------------
+    // Deliberately last of the recurring nudges: if anything real came due in
+    // this same pass, the check-in is redundant, so it yields and re-arms.
+    if data.check_in.enabled {
+        let every = (data.check_in.every_minutes.max(15) as i64) * 60;
+        match data.check_in.last_fired {
+            // Never fired: start the clock rather than firing the instant it
+            // is switched on.
+            None => data.check_in.last_fired = Some(now),
+            Some(last) => {
+                let target = data.check_in.snoozed_until.unwrap_or(last + every);
+                if now >= target {
+                    data.check_in.last_fired = Some(now);
+                    data.check_in.snoozed_until = None;
+                    if out.is_empty() {
+                        out.push(DueItem {
+                            id: "checkin".into(),
+                            kind: ItemKind::CheckIn,
+                            title: "How's it going? 👋".into(),
+                            time_label: label_minutes(minutes_now()),
+                            subtitle: next_up(data),
+                            sort_minutes: minutes_now() as i64,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     // ---- the weekly check-in, Sunday evening, once -------------------------
     if weekday_now() == 7 && minutes_now() >= 18 * 60 {
         let week = week_key();
@@ -159,6 +188,24 @@ pub fn collect_due(data: &mut AppData) -> Vec<DueItem> {
 
     out.sort_by_key(|i| i.sort_minutes);
     out
+}
+
+/// The soonest thing still open today, phrased for the check-in bubble.
+fn next_up(data: &AppData) -> Option<String> {
+    let now = minutes_now();
+    let today = today_string();
+    let next = data
+        .tasks
+        .iter()
+        .filter(|t| t.open() && t.date == today)
+        .filter_map(|t| parse_hhmm(&t.time).map(|m| (m, t.title.clone())))
+        .filter(|(m, _)| *m >= now)
+        .min_by_key(|(m, _)| *m);
+
+    match next {
+        Some((m, title)) => Some(format!("Next up: {} at {}.", title, label_minutes(m))),
+        None => Some("Nothing else scheduled today.".into()),
+    }
 }
 
 /// A stable key for "which week is it", used to fire the review only once.

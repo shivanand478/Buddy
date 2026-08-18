@@ -43,6 +43,7 @@ pub enum ItemKind {
     Goal,
     Team,
     Review,
+    CheckIn,
 }
 
 /// Everything that can produce a reminder collapses into one of these before
@@ -145,6 +146,31 @@ impl Default for Water {
     }
 }
 
+/// The periodic "still with me?" nudge. Same shape as `Water`, but it carries
+/// no counter — it exists to surface what's next, not to be ticked off.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckIn {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_checkin_minutes")]
+    pub every_minutes: u32,
+    #[serde(default)]
+    pub last_fired: Option<i64>,
+    #[serde(default)]
+    pub snoozed_until: Option<i64>,
+}
+
+impl Default for CheckIn {
+    fn default() -> Self {
+        CheckIn {
+            enabled: false,
+            every_minutes: default_checkin_minutes(),
+            last_fired: None,
+            snoozed_until: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Goal {
     #[serde(default = "new_id")]
@@ -216,6 +242,8 @@ pub struct AppData {
     #[serde(default)]
     pub water: Water,
     #[serde(default)]
+    pub check_in: CheckIn,
+    #[serde(default)]
     pub goals: Vec<Goal>,
     /// Rolling record of completed/total per day, for the weekly check-in.
     #[serde(default)]
@@ -251,6 +279,9 @@ fn default_emoji() -> String {
 }
 fn default_water_minutes() -> u32 {
     60
+}
+fn default_checkin_minutes() -> u32 {
+    120
 }
 fn default_quiet_start() -> u32 {
     23 * 60
