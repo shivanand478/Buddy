@@ -68,6 +68,19 @@ export const AUTH_BASE = 'https://buddy-api.<your-subdomain>.workers.dev';
 Rebuild, and the sign-in screen sends real codes. Nothing else changes — the
 app already speaks this protocol.
 
+## The live deployment
+
+| | |
+|---|---|
+| API | `https://buddy-api.buddyapp.workers.dev` |
+| Worker | `buddy-api` |
+| D1 database | `buddy` — `4993a9cf-ac51-4a2c-a367-61e322a80067` |
+| Sender | `shivanandp478@gmail.com` (Brevo, free plan) |
+
+The schema in this file has been run against that database, so the table
+definitions here are known to be accepted by real D1 rather than only by the
+test stand-in.
+
 ## The endpoints
 
 | Route | Body | Returns |

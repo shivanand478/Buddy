@@ -7,7 +7,7 @@
 //
 // With AUTH_BASE empty there is no server, and the app says so rather than
 // pretending a code was sent. See `localOnly` in auth.js.
-export const AUTH_BASE = '';
+export const AUTH_BASE = 'https://buddy-api.buddyapp.workers.dev';
 
 export function hasServer() {
   return !!AUTH_BASE;
