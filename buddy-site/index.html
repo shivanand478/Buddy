@@ -611,6 +611,26 @@
   .foot-links a:hover { color: var(--text); }
   .foot-c { font-family: var(--font-mono); font-size: 11.5px; color: var(--text-dim); }
 
+  .firstrun {
+    margin-top: 18px;
+    font-size: 13.5px;
+    color: var(--text-mid);
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+  .firstrun b { font-family: var(--font-display); font-weight: 600; color: var(--text); }
+  .firstrun code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }
+  .final .firstrun { color: #A9C4C6; margin-inline: auto; }
+  .final .firstrun b { color: #EAF2F0; }
+  .final .firstrun code { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.2); color: #EAF2F0; }
+
   @media (prefers-reduced-motion: reduce) {
     * { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
   }
@@ -749,6 +769,12 @@
         </a>
       </div>
       <p class="platform">Free · macOS 13+ · Windows 10+</p>
+      <p class="firstrun">
+        <b>First time opening it?</b> Buddy isn't signed with a paid developer
+        certificate yet, so your computer will ask before running it.
+        On macOS, open Buddy, then go to <b>System Settings → Privacy &amp; Security</b>
+        and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.
+      </p>
     </div>
 
     <div>
@@ -934,6 +960,12 @@
           Download for Windows
         </a>
       </div>
+      <p class="firstrun">
+        <b>First time opening it?</b> Buddy isn't signed with a paid developer
+        certificate yet, so your computer will ask before running it.
+        On macOS, open Buddy, then go to <b>System Settings → Privacy &amp; Security</b>
+        and click <b>Open Anyway</b>. On Windows, click <b>More info → Run anyway</b>.
+      </p>
     </div>
   </div>
 </section>
