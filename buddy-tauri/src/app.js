@@ -1,7 +1,9 @@
 import { installSprite, buddySvg, checkSvg, CHARACTERS } from './characters.js';
 import { askFlow, FOCUS_AREAS, suggestionsFor, normalizeAreas } from './ask.js';
 import { esc, todayStr, nowMinutes, parseHHMM, label, newId } from './util.js';
-import { signOut } from './api.js';
+import {
+  hasServer, signOut, setProfile, getTeam, inviteMember, removeMember, assignTask, fetchInbox
+} from './api.js';
 
 const { invoke } = window.__TAURI__.core;
 
@@ -538,7 +540,37 @@ function goalCard(g) {
 
 // ---------------------------------------------------------------- team
 
+let teamState = { loading: false, error: '', data: null };
+
+/** True when this copy of Buddy can actually talk to other people's copies. */
+function teamReady() {
+  const a = data.account || {};
+  return hasServer() && a.email && a.token && !a.local_only;
+}
+
 function viewTeam() {
+  if (!teamReady()) { viewTeamOffline(); return; }
+
+  main.innerHTML = `
+    <div class="view-head">
+      <h1>Team</h1>
+      <p>Assign a task with a time. The other person's Buddy does the reminding.</p>
+    </div>
+    <div id="teamBody"><div class="empty">Loading your team…</div></div>`;
+
+  renderTeamBody();
+  if (!teamState.data && !teamState.loading) refreshTeam();
+}
+
+/** What the Team page can honestly offer when there is no server behind it. */
+function viewTeamOffline() {
+  const a = data.account || {};
+  const why = !hasServer()
+    ? 'This build has no account server configured, so there is nowhere to send an invitation.'
+    : a.local_only
+      ? 'You are signed in on this computer only — your address was never verified, so the server does not know you yet.'
+      : 'You are not signed in.';
+
   main.innerHTML = `
     <div class="view-head">
       <h1>Team</h1>
@@ -546,11 +578,9 @@ function viewTeam() {
     </div>
 
     <div class="hint">
-      <strong>Not connected in this build.</strong><br>
-      Teams need an account and a sync server — assigning work to someone else means
-      their copy of Buddy has to receive it. The local side is ready: a task carrying
-      an <em>assigned by</em> name already shows and reminds as a team task, which is
-      what you can try below.
+      <strong>Not connected.</strong><br>${esc(why)}
+      Everything below still works on this machine: a task carrying an
+      <em>assigned by</em> name shows and reminds exactly as a real team task would.
     </div>
 
     <div class="card" style="margin-top:12px">
@@ -571,26 +601,27 @@ function viewTeam() {
 
   document.getElementById('mAdd').addEventListener('click', () => {
     const title = document.getElementById('mTitle').value.trim();
-    const by = document.getElementById('mBy').value.trim() || 'a teammate';
     if (!title) return;
-    data.tasks.push({
-      id: newId(),
+    data.tasks.push(makeTask({
       title,
-      date: todayStr(),
       time: document.getElementById('mTime').value || '16:30',
-      duration_min: null,
-      remind_offset_min: 0,
-      repeat: 'none',
-      done: false,
-      skipped: false,
-      notes: null,
-      assigned_by: by,
-      snoozed_until: null,
-      fired_at: null
-    });
+      assigned_by: document.getElementById('mBy').value.trim() || 'a teammate'
+    }));
     save();
   });
+  wireTaskRowButtons();
+}
 
+function makeTask({ title, date = todayStr(), time, duration_min = null,
+                    remind_offset_min = 0, assigned_by = null }) {
+  return {
+    id: newId(), title, date, time, duration_min, remind_offset_min,
+    repeat: 'none', done: false, skipped: false, notes: null,
+    assigned_by, snoozed_until: null, fired_at: null
+  };
+}
+
+function wireTaskRowButtons() {
   main.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
     data.tasks = data.tasks.filter((t) => t.id !== b.dataset.del);
     save();
@@ -600,6 +631,210 @@ function viewTeam() {
     if (t) t.done = !t.done;
     save();
   }));
+}
+
+async function refreshTeam() {
+  teamState.loading = true;
+  teamState.error = '';
+  renderTeamBody();
+  try {
+    teamState.data = await getTeam(data.account.token);
+  } catch (e) {
+    teamState.error = e.message;
+  }
+  teamState.loading = false;
+  renderTeamBody();
+}
+
+function renderTeamBody() {
+  const host = document.getElementById('teamBody');
+  if (!host) return;
+
+  if (teamState.loading && !teamState.data) {
+    host.innerHTML = '<div class="empty">Loading your team…</div>';
+    return;
+  }
+  if (teamState.error && !teamState.data) {
+    host.innerHTML = `<div class="hint"><strong>Couldn't load your team.</strong><br>${esc(teamState.error)}</div>
+      <div style="margin-top:10px"><button class="btn" id="teamRetry">Try again</button></div>`;
+    document.getElementById('teamRetry').addEventListener('click', refreshTeam);
+    return;
+  }
+
+  const t = teamState.data || { members: [], invites: [], memberOf: [] };
+  const me = data.account.email;
+  const others = t.members.filter((m) => m.email !== me);
+
+  host.innerHTML = `
+    ${teamState.error ? `<div class="hint">${esc(teamState.error)}</div>` : ''}
+
+    <div class="card">
+      <span class="label">Invite someone</span>
+      <div class="d" style="font-size:12.5px;color:var(--text-dim);margin:6px 0 10px">
+        They get an email with the download link. Signing in with that address is what joins them —
+        there's no link to click and nothing to paste.
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input id="tInvite" type="email" placeholder="them@example.com"
+               autocapitalize="off" spellcheck="false" style="flex:1">
+        <button class="btn btn-primary" id="tInviteGo">Send invite</button>
+      </div>
+      <div class="err" id="tInviteMsg" style="font-size:12.5px;margin-top:8px;min-height:1.2em"></div>
+    </div>
+
+    <div class="card">
+      <span class="label">Your team</span>
+      ${others.length || t.invites.length ? `
+        ${others.map((m) => `
+          <div class="toggle-row">
+            <div>
+              <div class="t">${esc(m.name || m.email)}</div>
+              <div class="d">${esc(m.name ? m.email : 'Joined')}</div>
+            </div>
+            <button class="btn btn-quiet" data-remove="${esc(m.email)}">Remove</button>
+          </div>`).join('')}
+        ${t.invites.map((i) => `
+          <div class="toggle-row">
+            <div>
+              <div class="t">${esc(i.email)}</div>
+              <div class="d">Invited — waiting for them to sign in.</div>
+            </div>
+            <button class="btn btn-quiet" data-remove="${esc(i.email)}">Cancel</button>
+          </div>`).join('')}
+      ` : '<div class="empty">Nobody yet. Invite someone above.</div>'}
+    </div>
+
+    ${others.length ? `
+      <div class="card">
+        <span class="label">Assign a task</span>
+        <div class="form-grid" style="margin-top:8px">
+          <div class="field" style="grid-column:1/3"><span class="label">What needs to be done?</span>
+            <input id="aTitle" placeholder="Finish mobile homepage"></div>
+          <div class="field"><span class="label">Who</span>
+            <select id="aWho">${others.map((m) => `<option value="${esc(m.email)}">${esc(m.name || m.email)}</option>`).join('')}</select></div>
+          <div class="field"><span class="label">When</span>
+            <input id="aDate" type="date" value="${todayStr()}"></div>
+          <div class="field"><span class="label">Time</span>
+            <input id="aTime" type="time" value="16:30"></div>
+          <div class="field"><span class="label">How long</span>
+            <select id="aDur">
+              <option value="">Not sure</option>
+              ${[15, 30, 60, 120].map((m) => `<option value="${m}">${m} min</option>`).join('')}
+            </select></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn btn-primary" id="aGo">Assign it</button>
+          <span class="d" id="aMsg" style="font-size:12.5px"></span>
+        </div>
+      </div>` : ''}
+
+    ${t.memberOf.length ? `
+      <div class="card">
+        <span class="label">You're on their team</span>
+        ${t.memberOf.map((o) => `
+          <div class="toggle-row">
+            <div><div class="t">${esc(o.owner_name || o.owner_email)}</div>
+              <div class="d">Can assign you tasks.</div></div>
+          </div>`).join('')}
+      </div>` : ''}
+
+    <div class="card">
+      <span class="label">Assigned to you</span>
+      ${data.tasks.filter((x) => x.assigned_by).map(taskRow).join('') || '<div class="empty">Nothing assigned to you.</div>'}
+    </div>`;
+
+  wireTeamActions();
+  wireTaskRowButtons();
+}
+
+function wireTeamActions() {
+  const msg = (id, text, bad) => {
+    const box = document.getElementById(id);
+    if (box) { box.textContent = text; box.style.color = bad ? 'var(--coral)' : 'var(--sage)'; }
+  };
+
+  const inviteBtn = document.getElementById('tInviteGo');
+  if (inviteBtn) {
+    inviteBtn.addEventListener('click', async () => {
+      const input = document.getElementById('tInvite');
+      const address = input.value.trim();
+      if (!address) return;
+      inviteBtn.disabled = true;
+      inviteBtn.textContent = 'Sending…';
+      try {
+        const res = await inviteMember(data.account.token, address);
+        input.value = '';
+        msg('tInviteMsg', res.alreadyMember ? 'They\'re already on your team.' : `Invitation sent to ${address}.`);
+        await refreshTeam();
+      } catch (e) {
+        msg('tInviteMsg', e.message, true);
+        inviteBtn.disabled = false;
+        inviteBtn.textContent = 'Send invite';
+      }
+    });
+  }
+
+  main.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      await removeMember(data.account.token, b.dataset.remove);
+      await refreshTeam();
+    } catch (e) {
+      msg('tInviteMsg', e.message, true);
+      b.disabled = false;
+    }
+  }));
+
+  const assignBtn = document.getElementById('aGo');
+  if (assignBtn) {
+    assignBtn.addEventListener('click', async () => {
+      const title = document.getElementById('aTitle').value.trim();
+      if (!title) { msg('aMsg', 'Give it a name first.', true); return; }
+      const dur = document.getElementById('aDur').value;
+      assignBtn.disabled = true;
+      try {
+        await assignTask(data.account.token, {
+          email: document.getElementById('aWho').value,
+          title,
+          date: document.getElementById('aDate').value,
+          time: document.getElementById('aTime').value,
+          duration_min: dur ? Number(dur) : null,
+          remind_offset_min: 0
+        });
+        document.getElementById('aTitle').value = '';
+        msg('aMsg', 'Sent. It will appear on their screen at that time.');
+      } catch (e) {
+        msg('aMsg', e.message, true);
+      }
+      assignBtn.disabled = false;
+    });
+  }
+}
+
+/**
+ * Collects anything assigned to this account. The server hands each task over
+ * exactly once, so a task deleted here does not come back on the next poll.
+ */
+async function pullInbox() {
+  if (!teamReady()) return 0;
+  try {
+    const { tasks } = await fetchInbox(data.account.token);
+    if (!tasks || !tasks.length) return 0;
+    tasks.forEach((t) => {
+      data.tasks.push(makeTask({
+        title: t.title,
+        date: t.date,
+        time: t.time,
+        duration_min: t.duration_min,
+        remind_offset_min: t.remind_offset_min || 0,
+        assigned_by: t.from_name || t.from_email
+      }));
+    });
+    await invoke('save_data', { data });
+    return tasks.length;
+  } catch (e) {
+    return 0;   // a poll that fails is not worth interrupting anyone over
+  }
 }
 
 // ---------------------------------------------------------------- settings
@@ -735,6 +970,7 @@ function viewSettings() {
   document.getElementById('sName').addEventListener('change', (e) => {
     data.prefs.name = e.target.value.trim();
     save();
+    syncProfile();
   });
   document.getElementById('sWater').addEventListener('click', () => {
     data.water.enabled = !data.water.enabled;
@@ -816,9 +1052,13 @@ document.querySelectorAll('.nav-item').forEach((b) => {
 
 load()
   .then(async () => {
-    // First launch of the day opens on the check-in instead of Today.
+    // Collect anything a teammate assigned while this copy was closed, before
+    // deciding what today looks like — otherwise the check-in shows a day that
+    // is already out of date.
+    await pullInbox();
     try { if (await invoke('needs_briefing')) view = 'briefing'; } catch (e) {}
     render();
+    syncProfile();
   })
   .catch((e) => {
   main.innerHTML = `<div class="empty">Couldn't load your data.<br><small>${esc(e)}</small></div>`;
@@ -826,3 +1066,14 @@ load()
 
 // Keep "in 18 minutes" honest without a full re-render storm.
 setInterval(() => { if (view === 'today') render(); }, 60_000);
+
+// Work assigned while Buddy is open should not wait for a restart.
+setInterval(async () => {
+  if (await pullInbox()) render();
+}, 5 * 60_000);
+
+/** Keeps the server's copy of your name in step, so assignments say who sent them. */
+async function syncProfile() {
+  if (!teamReady()) return;
+  try { await setProfile(data.account.token, data.prefs.name || ''); } catch (e) { /* not worth a fuss */ }
+}

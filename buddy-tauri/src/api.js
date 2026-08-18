@@ -50,3 +50,45 @@ export async function signOut(token) {
     headers: { Authorization: 'Bearer ' + token }
   }).catch(() => { /* signing out locally still has to succeed */ });
 }
+
+// ------------------------------------------------------------------ session
+
+function authed(path, { method = 'GET', token, body } = {}) {
+  const headers = { Authorization: 'Bearer ' + token };
+  if (body) headers['Content-Type'] = 'application/json';
+  return fetch(AUTH_BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined })
+    .then(async (res) => {
+      if (res.ok) return res.status === 204 ? {} : res.json();
+      let detail = '';
+      try { detail = (await res.json()).error || ''; } catch (e) { /* not JSON */ }
+      const err = new Error(detail || `Something went wrong (${res.status}).`);
+      err.status = res.status;
+      throw err;
+    });
+}
+
+/** Tells the server what to call you, so assigned tasks say who sent them. */
+export function setProfile(token, name) {
+  return authed('/auth/profile', { method: 'POST', token, body: { name } });
+}
+
+export function getTeam(token) {
+  return authed('/team', { token });
+}
+
+export function inviteMember(token, email) {
+  return authed('/team/invite', { method: 'POST', token, body: { email } });
+}
+
+export function removeMember(token, email) {
+  return authed('/team/remove', { method: 'POST', token, body: { email } });
+}
+
+export function assignTask(token, task) {
+  return authed('/team/assign', { method: 'POST', token, body: task });
+}
+
+/** Collects work assigned to you. The server hands each task over exactly once. */
+export function fetchInbox(token) {
+  return authed('/sync/inbox', { token });
+}

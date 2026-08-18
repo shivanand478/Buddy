@@ -76,7 +76,18 @@ app already speaks this protocol.
 | `POST /auth/verify` | `{ email, code }` | `{ token, email, name }` |
 | `GET /auth/me` | `Authorization: Bearer <token>` | `{ email, name }` |
 | `POST /auth/sign-out` | `Authorization: Bearer <token>` | `204` |
+| `POST /auth/profile` | `{ name }` | `{ email, name }` |
 | `GET /health` | — | `{ ok: true }` |
+
+Teams — every one of these needs `Authorization: Bearer <token>`:
+
+| Route | Body | Returns |
+|---|---|---|
+| `GET /team` | — | `{ team, members, invites, memberOf }` |
+| `POST /team/invite` | `{ email }` | `{ invited }` |
+| `POST /team/remove` | `{ email }` | `204` |
+| `POST /team/assign` | `{ email, title, date, time, duration_min, remind_offset_min }` | `{ id }` |
+| `GET /sync/inbox` | — | `{ tasks: [...] }` |
 
 Errors are always `{ "error": "a sentence meant for a person" }`, and the app
 shows that sentence directly. If you reword an error here, the app says the new
@@ -107,16 +118,37 @@ python3 test/harness.py
 ```
 
 Then open `test/run.html`. It builds a page with the real `worker.js`, an
-in-memory stand-in for D1, and a recorder in place of Brevo, then runs 32
+in-memory stand-in for D1, and a recorder in place of Brevo, then runs 56
 assertions: the happy path, code reuse, expiry, wrong-code lockout, both rate
-limits, malformed input, CORS preflight, a failing email provider, and a
-server with no email key configured.
+limits, malformed input, CORS preflight, a failing email provider, a server
+with no email key configured, and the whole team flow — inviting, joining by
+signing in, assigning, one-time delivery, removal, and a stranger being
+refused.
 
 What that does **not** test is Cloudflare's own SQL engine — the stand-in
 answers the statements the worker issues, so a mistake in the SQL itself would
 still show up only on first deploy. Step 4 above is the check for that.
 
+## How teams work
+
+An invitation is **a claim on an email address**, not a link to click. Invite
+`them@example.com` and the server remembers it; the next time that address
+signs in to Buddy — today, or in three weeks — they join. Nothing to paste, no
+token to lose, and an invitation sent to someone who has never heard of Buddy
+still works whenever they get round to it. Invitations expire after 30 days.
+
+Assigned work waits in `assignments` until the recipient's copy of Buddy
+collects it, which it does at launch and every five minutes. **The server hands
+each task over exactly once**, so deleting a task on the receiving end does not
+bring it back on the next poll.
+
+You can only assign to someone you share a team with. That is checked on the
+server, not in the app.
+
 ## What isn't built yet
 
-Teams. The schema has room for it and the session layer is what it needs, but
-invites, membership, and assigning a task across accounts are all still ahead.
+- **Syncing your own tasks between your own machines.** Accounts exist, but
+  tasks still live only on the computer that made them. Only assigned work
+  crosses the wire.
+- **Team names, more than one team, roles beyond owner/member.** Every account
+  gets exactly one team, created the first time it is needed.

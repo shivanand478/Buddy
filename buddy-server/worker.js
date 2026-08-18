@@ -9,7 +9,14 @@
  *   POST /auth/verify        { email, code }    -> { token, email, name }
  *   GET  /auth/me            Bearer token       -> { email, name }
  *   POST /auth/sign-out      Bearer token       -> 204
+ *   POST /auth/profile       { name }           -> { email, name }
  *   GET  /health                                -> { ok: true }
+ *
+ *   GET  /team               Bearer             -> { team, members, invites }
+ *   POST /team/invite        { email }          -> { invited }
+ *   POST /team/remove        { email }          -> 204
+ *   POST /team/assign        { email, title, date, time, ... } -> { id }
+ *   GET  /sync/inbox         Bearer             -> { tasks: [...] }
  *
  * Two rules the whole design rests on:
  *   1. Never store a secret you could read back. Codes and tokens are stored
@@ -21,9 +28,11 @@
 const CODE_TTL_MS = 10 * 60 * 1000;        // a code is good for ten minutes
 const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 const MAX_ATTEMPTS = 5;                     // wrong guesses before a code dies
+const INVITE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const RATE = {
   email: { limit: 5, windowMs: 60 * 60 * 1000 },   // codes per address per hour
-  ip: { limit: 20, windowMs: 60 * 60 * 1000 }      // codes per IP per hour
+  ip: { limit: 20, windowMs: 60 * 60 * 1000 },     // codes per IP per hour
+  invite: { limit: 20, windowMs: 24 * 60 * 60 * 1000 }  // invites per account per day
 };
 
 // ------------------------------------------------------------------ helpers
@@ -115,7 +124,12 @@ async function sweep(db, now) {
   await db.batch([
     db.prepare('DELETE FROM login_codes WHERE expires_at < ?').bind(now),
     db.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(now),
-    db.prepare('DELETE FROM rate_limits WHERE window_end < ?').bind(now)
+    db.prepare('DELETE FROM rate_limits WHERE window_end < ?').bind(now),
+    db.prepare('DELETE FROM invites WHERE expires_at < ?').bind(now),
+    // Delivered work is the app's problem from then on; 30 days is plenty of
+    // room to notice a sync bug before the evidence is gone.
+    db.prepare('DELETE FROM assignments WHERE delivered_at IS NOT NULL AND delivered_at < ?')
+      .bind(now - 30 * 24 * 60 * 60 * 1000)
   ]);
 }
 
@@ -141,14 +155,39 @@ in without the code.`;
   return { text, html };
 }
 
-/**
- * Sends through Brevo, whose free tier allows 300 emails a day and — unlike
- * most providers — will verify a single sender address without a domain.
- */
-async function sendCode(env, to, code) {
-  const appName = env.APP_NAME || 'Buddy';
-  const { text, html } = emailBody(code, appName);
+function inviteBody(inviter, appName, siteUrl) {
+  const who = inviter || 'A teammate';
+  const text =
+`${who} added you to their ${appName} team.
 
+${appName} is a little desktop companion that reminds you when it's time to do
+something. When ${who} assigns you a task, it shows up on your screen at the
+time they picked.
+
+1. Download it: ${siteUrl}
+2. Sign in with this email address — that's what joins you to the team.
+
+Nothing else to do. If you weren't expecting this, you can ignore it.`;
+
+  const html =
+`<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:440px;margin:0 auto;padding:28px 24px;color:#14313A">
+  <p style="font-size:16px;margin:0 0 16px"><strong>${who}</strong> added you to their ${appName} team.</p>
+  <p style="font-size:14.5px;line-height:1.6;color:#3E5158;margin:0 0 20px">
+    ${appName} is a little desktop companion that reminds you when it's time to do something.
+    When ${who} assigns you a task, it shows up on your screen at the time they picked.
+  </p>
+  <p style="margin:0 0 18px">
+    <a href="${siteUrl}" style="display:inline-block;background:#EFB43B;color:#14313A;font-weight:700;text-decoration:none;padding:12px 22px;border-radius:10px">Download ${appName}</a>
+  </p>
+  <p style="font-size:14px;color:#3E5158;margin:0">Then <strong>sign in with this email address</strong> — that is what joins you to the team.</p>
+  <p style="font-size:12.5px;color:#5C6B70;margin:18px 0 0">If you weren't expecting this, you can ignore it.</p>
+</div>`;
+
+  return { text, html };
+}
+
+/** One place that talks to Brevo, so every send is shaped the same way. */
+async function send(env, to, subject, text, html) {
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -157,20 +196,34 @@ async function sendCode(env, to, code) {
       accept: 'application/json'
     },
     body: JSON.stringify({
-      sender: { email: env.SENDER_EMAIL, name: appName },
+      sender: { email: env.SENDER_EMAIL, name: env.APP_NAME || 'Buddy' },
       to: [{ email: to }],
-      subject: `${code} is your ${appName} code`,
+      subject,
       textContent: text,
       htmlContent: html
     })
   });
-
   if (!res.ok) {
-    // Brevo's message is far more useful than a generic failure, but it is for
-    // the logs — the caller gets something plain.
     console.error('brevo', res.status, await res.text().catch(() => ''));
     throw new Error('email-failed');
   }
+}
+
+/**
+ * Sends through Brevo, whose free tier allows 300 emails a day and — unlike
+ * most providers — will verify a single sender address without a domain.
+ */
+async function sendCode(env, to, code) {
+  const appName = env.APP_NAME || 'Buddy';
+  const { text, html } = emailBody(code, appName);
+  await send(env, to, `${code} is your ${appName} code`, text, html);
+}
+
+async function sendInvite(env, to, inviterName) {
+  const appName = env.APP_NAME || 'Buddy';
+  const site = env.SITE_URL || 'https://shivanand478.github.io/Buddy/';
+  const { text, html } = inviteBody(inviterName, appName, site);
+  await send(env, to, `${inviterName || 'A teammate'} added you to their ${appName} team`, text, html);
 }
 
 // ------------------------------------------------------------------ routes
@@ -259,10 +312,64 @@ async function verifyRoute(request, env, now) {
     ).bind(await sha256(token), email, now, now + SESSION_TTL_MS)
   ]);
 
+  // An invitation is a claim on an address, so signing in is what redeems it.
+  // Nothing to click, nothing to paste, and an invite sent before the person
+  // ever heard of Buddy still works whenever they get round to it.
+  await claimInvites(env.DB, email, now);
+
   const account = await env.DB.prepare('SELECT name FROM accounts WHERE email = ?')
     .bind(email).first();
 
   return json({ token, email, name: account?.name || null });
+}
+
+async function claimInvites(db, email, now) {
+  // Only a real account can join a team. Without this an invitation would make
+  // a member out of an address that has never signed in — and that member could
+  // then be assigned work they will never see.
+  const account = await db.prepare('SELECT email FROM accounts WHERE email = ?').bind(email).first();
+  if (!account) return;
+
+  const pending = await db.prepare(
+    'SELECT team_id FROM invites WHERE email = ? AND expires_at > ?'
+  ).bind(email, now).all();
+
+  const rows = pending?.results || [];
+  if (!rows.length) return;
+
+  await db.batch([
+    ...rows.map((r) => db.prepare(
+      `INSERT INTO team_members (team_id, email, role, joined_at) VALUES (?, ?, 'member', ?)
+       ON CONFLICT(team_id, email) DO NOTHING`
+    ).bind(r.team_id, email, now)),
+    db.prepare('DELETE FROM invites WHERE email = ?').bind(email)
+  ]);
+}
+
+/** The team this account owns, created the first time it is needed. */
+async function ownTeam(db, email, now) {
+  const existing = await db.prepare('SELECT id, name FROM teams WHERE owner_email = ?')
+    .bind(email).first();
+  if (existing) return existing;
+
+  const id = makeToken().slice(0, 24);
+  await db.batch([
+    db.prepare('INSERT INTO teams (id, owner_email, name, created_at) VALUES (?, ?, ?, ?)')
+      .bind(id, email, null, now),
+    db.prepare(`INSERT INTO team_members (team_id, email, role, joined_at) VALUES (?, ?, 'owner', ?)
+                ON CONFLICT(team_id, email) DO NOTHING`).bind(id, email, now)
+  ]);
+  return { id, name: null };
+}
+
+/** True when both addresses share any team — the check every assign must pass. */
+async function shareTeam(db, a, b) {
+  const row = await db.prepare(
+    `SELECT 1 AS ok FROM team_members m1
+     JOIN team_members m2 ON m1.team_id = m2.team_id
+     WHERE m1.email = ? AND m2.email = ?`
+  ).bind(a, b).first();
+  return !!row;
 }
 
 async function sessionFor(request, env, now) {
@@ -298,7 +405,178 @@ async function signOutRoute(request, env, now) {
   return noContent();
 }
 
+
+// ------------------------------------------------------------------ profile
+
+async function profileRoute(request, env, now) {
+  const email = await sessionFor(request, env, now);
+  if (!email) return fail(401, 'Not signed in.');
+
+  const body = await request.json().catch(() => ({}));
+  const name = String(body.name || '').trim().slice(0, 60);
+  await env.DB.prepare('UPDATE accounts SET name = ? WHERE email = ?').bind(name || null, email).run();
+  return json({ email, name: name || null });
+}
+
+// ------------------------------------------------------------------ teams
+
+async function teamRoute(request, env, now) {
+  const email = await sessionFor(request, env, now);
+  if (!email) return fail(401, 'Not signed in.');
+
+  const team = await ownTeam(env.DB, email, now);
+
+  const members = await env.DB.prepare(
+    `SELECT m.email, m.role, m.joined_at, a.name
+     FROM team_members m LEFT JOIN accounts a ON a.email = m.email
+     WHERE m.team_id = ? ORDER BY m.joined_at`
+  ).bind(team.id).all();
+
+  const invites = await env.DB.prepare(
+    'SELECT email, created_at FROM invites WHERE team_id = ? AND expires_at > ? ORDER BY created_at'
+  ).bind(team.id, now).all();
+
+  // Teams this account was invited into by someone else.
+  const partOf = await env.DB.prepare(
+    `SELECT t.id, t.owner_email, a.name AS owner_name
+     FROM team_members m JOIN teams t ON t.id = m.team_id
+     LEFT JOIN accounts a ON a.email = t.owner_email
+     WHERE m.email = ? AND t.owner_email != ?`
+  ).bind(email, email).all();
+
+  return json({
+    team: { id: team.id, name: team.name },
+    members: members?.results || [],
+    invites: invites?.results || [],
+    memberOf: partOf?.results || []
+  });
+}
+
+async function inviteRoute(request, env, now) {
+  const me = await sessionFor(request, env, now);
+  if (!me) return fail(401, 'Not signed in.');
+
+  if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) {
+    return fail(503, 'This server has no email provider configured yet.');
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const invitee = normalizeEmail(body.email);
+  if (!validEmail(invitee)) return fail(400, "That doesn't look like an email address.");
+  if (invitee === me) return fail(400, "You're already on your own team.");
+
+  if (!(await underLimit(env.DB, 'invite:' + me, RATE.invite, now))) {
+    return fail(429, "That's a lot of invitations for one day. Try again tomorrow.");
+  }
+
+  const team = await ownTeam(env.DB, me, now);
+
+  const already = await env.DB.prepare(
+    'SELECT 1 AS ok FROM team_members WHERE team_id = ? AND email = ?'
+  ).bind(team.id, invitee).first();
+  if (already) return json({ invited: invitee, alreadyMember: true });
+
+  const account = await env.DB.prepare('SELECT name FROM accounts WHERE email = ?').bind(me).first();
+  const inviterName = account?.name || me;
+
+  await env.DB.prepare(
+    `INSERT INTO invites (team_id, email, invited_by, created_at, expires_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(team_id, email) DO UPDATE SET created_at = excluded.created_at,
+                                               expires_at = excluded.expires_at`
+  ).bind(team.id, invitee, me, now, now + INVITE_TTL_MS).run();
+
+  try {
+    await sendInvite(env, invitee, inviterName);
+  } catch (e) {
+    await env.DB.prepare('DELETE FROM invites WHERE team_id = ? AND email = ?')
+      .bind(team.id, invitee).run();
+    return fail(502, "We couldn't send that invitation. Try again in a minute.");
+  }
+
+  // If they already have an account, the invite is redeemed straight away and
+  // they can be assigned work without waiting for their next sign-in.
+  await claimInvites(env.DB, invitee, now);
+
+  return json({ invited: invitee });
+}
+
+async function removeRoute(request, env, now) {
+  const me = await sessionFor(request, env, now);
+  if (!me) return fail(401, 'Not signed in.');
+
+  const body = await request.json().catch(() => ({}));
+  const who = normalizeEmail(body.email);
+  const team = await ownTeam(env.DB, me, now);
+  if (who === me) return fail(400, "You can't remove yourself from your own team.");
+
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM team_members WHERE team_id = ? AND email = ?').bind(team.id, who),
+    env.DB.prepare('DELETE FROM invites WHERE team_id = ? AND email = ?').bind(team.id, who)
+  ]);
+  return noContent();
+}
+
+async function assignRoute(request, env, now) {
+  const me = await sessionFor(request, env, now);
+  if (!me) return fail(401, 'Not signed in.');
+
+  const body = await request.json().catch(() => ({}));
+  const to = normalizeEmail(body.email);
+  const title = String(body.title || '').trim().slice(0, 200);
+  const date = String(body.date || '').trim();
+  const time = String(body.time || '').trim();
+
+  if (!validEmail(to)) return fail(400, "That doesn't look like an email address.");
+  if (!title) return fail(400, 'Give the task a name.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail(400, 'That date looks wrong.');
+  if (!/^\d{2}:\d{2}$/.test(time)) return fail(400, 'That time looks wrong.');
+
+  if (to !== me && !(await shareTeam(env.DB, me, to))) {
+    return fail(403, "They're not on your team yet.");
+  }
+
+  const account = await env.DB.prepare('SELECT name FROM accounts WHERE email = ?').bind(me).first();
+  const id = makeToken().slice(0, 32);
+
+  await env.DB.prepare(
+    `INSERT INTO assignments
+       (id, to_email, from_email, from_name, title, date, time, duration_min, remind_offset_min, created_at, delivered_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`
+  ).bind(
+    id, to, me, account?.name || null, title, date, time,
+    Number.isFinite(body.duration_min) ? body.duration_min : null,
+    Number.isFinite(body.remind_offset_min) ? body.remind_offset_min : 0,
+    now
+  ).run();
+
+  return json({ id });
+}
+
+/**
+ * Everything assigned to this account that its copy of Buddy has not collected.
+ * Marked delivered on the way out, so a task is handed over exactly once and a
+ * person who deletes it does not get it back on the next poll.
+ */
+async function inboxRoute(request, env, now) {
+  const me = await sessionFor(request, env, now);
+  if (!me) return fail(401, 'Not signed in.');
+
+  const rows = await env.DB.prepare(
+    `SELECT id, from_email, from_name, title, date, time, duration_min, remind_offset_min
+     FROM assignments WHERE to_email = ? AND delivered_at IS NULL ORDER BY created_at`
+  ).bind(me).all();
+
+  const tasks = rows?.results || [];
+  if (tasks.length) {
+    await env.DB.prepare(
+      'UPDATE assignments SET delivered_at = ? WHERE to_email = ? AND delivered_at IS NULL'
+    ).bind(now, me).run();
+  }
+  return json({ tasks });
+}
+
 // ------------------------------------------------------------------ entry
+
 
 export default {
   async fetch(request, env, ctx) {
@@ -319,6 +597,12 @@ export default {
         case 'POST /auth/verify':       response = await verifyRoute(request, env, now); break;
         case 'GET /auth/me':            response = await meRoute(request, env, now); break;
         case 'POST /auth/sign-out':     response = await signOutRoute(request, env, now); break;
+        case 'POST /auth/profile':      response = await profileRoute(request, env, now); break;
+        case 'GET /team':               response = await teamRoute(request, env, now); break;
+        case 'POST /team/invite':       response = await inviteRoute(request, env, now); break;
+        case 'POST /team/remove':       response = await removeRoute(request, env, now); break;
+        case 'POST /team/assign':       response = await assignRoute(request, env, now); break;
+        case 'GET /sync/inbox':         response = await inboxRoute(request, env, now); break;
         default:                        response = fail(404, 'No such endpoint.');
       }
 

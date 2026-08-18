@@ -193,6 +193,116 @@ async function run() {
     check('missing email config is reported, not ignored', r.status === 503, 'got ' + r.status);
   }
 
+  // ---------------------------------------------------------------- teams
+  {
+    const env = makeEnv();
+    installFetchRecorder();
+
+    // sign two people in
+    async function signIn(addr) {
+      await call(env, 'POST', '/auth/request-code', { body: { email: addr } });
+      const r = await call(env, 'POST', '/auth/verify', { body: { email: addr, code: sentCode } });
+      return (await r.json()).token;
+    }
+    const owner = await signIn('owner@x.com');
+    await call(env, 'POST', '/auth/profile', { token: owner, body: { name: 'Shiv' } });
+
+    const t0 = await call(env, 'GET', '/team', { token: owner });
+    const team0 = await t0.json();
+    check('a team is created on first look', !!team0.team.id);
+    check('the owner is a member of their own team',
+      team0.members.length === 1 && team0.members[0].role === 'owner', JSON.stringify(team0.members));
+
+    const anon = await call(env, 'GET', '/team');
+    check('/team needs a session', anon.status === 401);
+
+    // invite someone who has no account yet
+    const inv = await call(env, 'POST', '/team/invite', { token: owner, body: { email: 'mate@y.com' } });
+    check('invite accepted', inv.status === 200, 'got ' + inv.status);
+    check('invite email goes to the invitee', sentTo === 'mate@y.com', String(sentTo));
+
+    const t1 = await (await call(env, 'GET', '/team', { token: owner })).json();
+    check('a pending invite is listed', t1.invites.length === 1 && t1.invites[0].email === 'mate@y.com');
+
+    // assigning before they join must be refused
+    const early = await call(env, 'POST', '/team/assign', {
+      token: owner, body: { email: 'mate@y.com', title: 'Nope', date: '2026-08-20', time: '10:00' } });
+    check('cannot assign to someone who has not joined', early.status === 403, 'got ' + early.status);
+
+    // they sign in -> the invite is redeemed
+    const mate = await signIn('mate@y.com');
+    const t2 = await (await call(env, 'GET', '/team', { token: owner })).json();
+    check('signing in joins the team', t2.members.length === 2, JSON.stringify(t2.members));
+    check('the invite is cleared once redeemed', t2.invites.length === 0);
+
+    const mateView = await (await call(env, 'GET', '/team', { token: mate })).json();
+    check('the member sees whose team they are on',
+      mateView.memberOf.length === 1 && mateView.memberOf[0].owner_email === 'owner@x.com',
+      JSON.stringify(mateView.memberOf));
+
+    // assign for real
+    const a = await call(env, 'POST', '/team/assign', {
+      token: owner,
+      body: { email: 'mate@y.com', title: 'Finish the homepage', date: '2026-08-20',
+              time: '16:30', duration_min: 30, remind_offset_min: 15 } });
+    check('assign accepted', a.status === 200, 'got ' + a.status);
+
+    const box = await (await call(env, 'GET', '/sync/inbox', { token: mate })).json();
+    check('the task lands in their inbox', box.tasks.length === 1 && box.tasks[0].title === 'Finish the homepage',
+      JSON.stringify(box.tasks));
+    check('the task carries who sent it', box.tasks[0].from_name === 'Shiv', JSON.stringify(box.tasks[0]));
+    check('duration and lead time survive',
+      box.tasks[0].duration_min === 30 && box.tasks[0].remind_offset_min === 15);
+
+    const box2 = await (await call(env, 'GET', '/sync/inbox', { token: mate })).json();
+    check('a delivered task is not handed over twice', box2.tasks.length === 0, JSON.stringify(box2.tasks));
+
+    const ownerBox = await (await call(env, 'GET', '/sync/inbox', { token: owner })).json();
+    check('the sender does not receive their own assignment', ownerBox.tasks.length === 0);
+
+    // a stranger cannot assign
+    const stranger = await signIn('stranger@z.com');
+    const bad = await call(env, 'POST', '/team/assign', {
+      token: stranger, body: { email: 'mate@y.com', title: 'Sneaky', date: '2026-08-20', time: '09:00' } });
+    check('a stranger cannot assign work', bad.status === 403, 'got ' + bad.status);
+
+    // validation
+    const noTitle = await call(env, 'POST', '/team/assign', {
+      token: owner, body: { email: 'mate@y.com', title: '  ', date: '2026-08-20', time: '09:00' } });
+    check('an assignment needs a title', noTitle.status === 400);
+    const badDate = await call(env, 'POST', '/team/assign', {
+      token: owner, body: { email: 'mate@y.com', title: 'x', date: '20/08/2026', time: '09:00' } });
+    check('an assignment needs a real date', badDate.status === 400);
+    const self = await call(env, 'POST', '/team/invite', { token: owner, body: { email: 'owner@x.com' } });
+    check('you cannot invite yourself', self.status === 400);
+
+    // removal
+    const rm = await call(env, 'POST', '/team/remove', { token: owner, body: { email: 'mate@y.com' } });
+    check('remove returns 204', rm.status === 204);
+    const t3 = await (await call(env, 'GET', '/team', { token: owner })).json();
+    check('the member is gone', t3.members.length === 1);
+    const after = await call(env, 'POST', '/team/assign', {
+      token: owner, body: { email: 'mate@y.com', title: 'Too late', date: '2026-08-20', time: '09:00' } });
+    check('assigning to a removed member is refused', after.status === 403, 'got ' + after.status);
+  }
+
+  // ---------------------------------------------------------------- invite to an existing account
+  {
+    const env = makeEnv();
+    installFetchRecorder();
+    async function signIn(addr) {
+      await call(env, 'POST', '/auth/request-code', { body: { email: addr } });
+      const r = await call(env, 'POST', '/auth/verify', { body: { email: addr, code: sentCode } });
+      return (await r.json()).token;
+    }
+    const owner = await signIn('o@x.com');
+    await signIn('already@y.com');
+    await call(env, 'POST', '/team/invite', { token: owner, body: { email: 'already@y.com' } });
+    const t = await (await call(env, 'GET', '/team', { token: owner })).json();
+    check('inviting an existing account joins them at once',
+      t.members.length === 2 && t.invites.length === 0, JSON.stringify(t));
+  }
+
   const failed = results.filter((r) => !r.ok);
   document.getElementById('out').innerHTML =
     results.map((r) => `<span class="${r.ok ? 'pass' : 'fail'}">${r.ok ? '✓' : '✗'} ${r.name}${r.detail ? ' — ' + r.detail : ''}</span>`).join('\n') +
