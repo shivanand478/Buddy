@@ -46,7 +46,7 @@ jobs:
         with:
           projectPath: buddy-tauri
           tagName: ${{ github.ref_name }}
-          releaseName: 'Buddy ${{ github.ref_name }}'
+          releaseName: 'Conviea ${{ github.ref_name }}'
           releaseBody: 'Download the installer for your platform below.'
           releaseDraft: false
           prerelease: false
