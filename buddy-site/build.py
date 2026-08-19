@@ -12,9 +12,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 
-TITLE = "Buddy"
+TITLE = "Conviea"
 DESCRIPTION = (
-    "Tasks, routines and team work — Buddy reminds you when it's time to "
+    "Tasks, routines and team work — Conviea reminds you when it's time to "
     "actually get things done. A playful desktop companion for Mac and Windows."
 )
 FAVICON = (
@@ -66,6 +66,14 @@ def main() -> None:
     for extra in ("CNAME",):
         if (ROOT / extra).exists():
             shutil.copy(ROOT / extra, DIST / extra)
+
+    # The character art. Copied rather than inlined: four PNGs shared across
+    # the page would bloat the HTML and lose browser caching entirely.
+    art_src = ROOT / "img"
+    if art_src.exists():
+        shutil.copytree(art_src, DIST / "img", dirs_exist_ok=True)
+        count = len(list((DIST / "img").glob("*.png")))
+        print(f"copied {count} character images")
 
     size = (DIST / "index.html").stat().st_size
     print(f"wrote {DIST / 'index.html'} ({size / 1024:.1f} KB)")
