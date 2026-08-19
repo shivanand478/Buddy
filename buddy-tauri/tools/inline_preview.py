@@ -22,6 +22,35 @@ ENTRY = {
 }
 
 
+def image_shim() -> str:
+    """A <script> that resolves img/*.png to data URIs inside the preview.
+
+    The preview page is served from a data: URL, so relative paths resolve to
+    nothing and every character renders blank. String-replacing the paths does
+    not work because most are built at runtime (`img/${id}.png`), so instead a
+    map is injected and an observer rewrites any src as it appears.
+    """
+    import base64, json
+    cache = {}
+    for png in sorted((SRC / "img").glob("*.png")):
+        cache["img/" + png.name] = ("data:image/png;base64,"
+                                    + base64.b64encode(png.read_bytes()).decode())
+    return (
+        "<script>(function(){var M="
+        + json.dumps(cache)
+        + ";function fix(n){if(n.tagName==='IMG'){var s=n.getAttribute('src');"
+          "if(s&&M[s])n.setAttribute('src',M[s]);}}"
+          "new MutationObserver(function(rs){rs.forEach(function(r){"
+          "r.addedNodes.forEach(function(n){if(n.nodeType===1){fix(n);"
+          "n.querySelectorAll&&n.querySelectorAll('img').forEach(fix);}});"
+          "if(r.type==='attributes')fix(r.target);});})"
+          ".observe(document.documentElement,{childList:true,subtree:true,"
+          "attributes:true,attributeFilter:['src']});"
+          "document.addEventListener('DOMContentLoaded',function(){"
+          "document.querySelectorAll('img').forEach(fix);});})();</script>"
+    )
+
+
 def strip_module(text: str) -> str:
     text = re.sub(r"^\s*import\s+.*?;\s*$", "", text, flags=re.M | re.S)
     # `export async function` and `export function` both have to survive the
@@ -46,9 +75,10 @@ def build(name: str) -> Path:
     # replace the module tag with everything, inlined
     # lambda repl: the JS is literal text, not a regex template — backslashes
     # in the source must not be read as escape sequences.
+    shim = ""   # served over HTTP; relative image paths resolve normally
     html = re.sub(
         r'<script type="module"[^>]*></script>',
-        lambda _m: f"<script>\n{stub}\n</script>\n<script>\n{js}\n</script>",
+        lambda _m: f"{shim}\n<script>\n{stub}\n</script>\n<script>\n{js}\n</script>",
         html,
     )
 

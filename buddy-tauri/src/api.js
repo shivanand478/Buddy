@@ -1,5 +1,5 @@
 // The account server. Everything that touches the network lives here, so
-// pointing Buddy at a real backend is one edit.
+// pointing Conviea at a real backend is one edit.
 //
 // Two endpoints are expected:
 //   POST {AUTH_BASE}/auth/request-code  {email}         -> 204

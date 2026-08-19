@@ -1,4 +1,4 @@
-import { installSprite, buddySvg, checkSvg, CHARACTERS } from './characters.js';
+import { installSprite, buddyArt, checkSvg, knownCharacter, CHARACTERS } from './characters.js';
 import { askFlow, FOCUS_AREAS, suggestionsFor, normalizeAreas } from './ask.js';
 import { esc, todayStr, nowMinutes, parseHHMM, label, newId } from './util.js';
 import {
@@ -33,17 +33,23 @@ const weekdayNow = () => (new Date().getDay() + 6) % 7 + 1;
 
 // ---------------------------------------------------------------- persistence
 
+/** Keeps the sidebar portrait in step with the chosen character. */
+function setSideChar() {
+  const img = document.getElementById('sideChar');
+  if (img) img.src = `img/${knownCharacter(data.prefs.character)}@small.png`;
+}
+
 async function load() {
   data = await invoke('get_data');
   data.check_in = data.check_in || { enabled: false, every_minutes: 120, last_fired: null, snoozed_until: null };
   data.prefs.focus_areas = normalizeAreas(data.prefs.focus_areas);
   data.account = data.account || { email: '', verified: false, token: null, local_only: false };
-  document.getElementById('sideChar').setAttribute('href', `#c-${data.prefs.character}`);
+  setSideChar();
 }
 
 async function save() {
   await invoke('save_data', { data });
-  document.getElementById('sideChar').setAttribute('href', `#c-${data.prefs.character}`);
+  setSideChar();
   render();
 }
 
@@ -114,7 +120,7 @@ function viewToday() {
   // The one thing Home asks of you. Everything else on this screen is a report.
   html += `
     <button class="cta" id="ctaTodo">
-      <span class="cta-mark">${buddySvg(data.prefs.character)}</span>
+      <span class="cta-mark">${buddyArt(data.prefs.character)}</span>
       <span class="cta-text">
         <span class="cta-t">Create today's to-do</span>
         <span class="cta-d">${tasksToday.length
@@ -127,7 +133,7 @@ function viewToday() {
   if (next) {
     html += `
       <div class="next-up">
-        ${buddySvg(data.prefs.character)}
+        ${buddyArt(data.prefs.character)}
         <div>
           <div class="k">Next</div>
           <div class="v">${esc(next.title)}</div>
@@ -137,7 +143,7 @@ function viewToday() {
   }
 
   if (!agenda.length) {
-    html += `<div class="empty">${buddySvg(data.prefs.character)}<div>Nothing planned yet.<br>Add one thing you need to do today.</div></div>`;
+    html += `<div class="empty">${buddyArt(data.prefs.character)}<div>Nothing planned yet.<br>Add one thing you need to do today.</div></div>`;
   } else {
     html += `<div class="card">${agenda.map(rowHtml).join('')}</div>`;
   }
@@ -220,7 +226,7 @@ async function viewBriefing() {
   main.innerHTML = `
     <div class="brief">
       <div class="brief-hi">
-        ${buddySvg(data.prefs.character)}
+        ${buddyArt(data.prefs.character)}
         <div>
           <h1>${greet}${esc(name)} 👋</h1>
           <p>${stale.length ? "Before we start — a few things didn't get done." : "Let's set up your day."}</p>
@@ -408,7 +414,7 @@ function viewRoutine() {
   main.innerHTML = `
     <div class="view-head">
       <h1>Routine</h1>
-      <p>Things that happen again and again. You choose the time, Buddy handles the rest.</p>
+      <p>Things that happen again and again. You choose the time, Conviea handles the rest.</p>
     </div>
 
     <div class="card">
@@ -542,7 +548,7 @@ function goalCard(g) {
 
 let teamState = { loading: false, error: '', data: null };
 
-/** True when this copy of Buddy can actually talk to other people's copies. */
+/** True when this copy of Conviea can actually talk to other people's copies. */
 function teamReady() {
   const a = data.account || {};
   return hasServer() && a.email && a.token && !a.local_only;
@@ -554,7 +560,7 @@ function viewTeam() {
   main.innerHTML = `
     <div class="view-head">
       <h1>Team</h1>
-      <p>Assign a task with a time. The other person's Buddy does the reminding.</p>
+      <p>Assign a task with a time. The other person's Conviea does the reminding.</p>
     </div>
     <div id="teamBody"><div class="empty">Loading your team…</div></div>`;
 
@@ -574,7 +580,7 @@ function viewTeamOffline() {
   main.innerHTML = `
     <div class="view-head">
       <h1>Team</h1>
-      <p>Assign a task with a time. The other person's Buddy does the reminding.</p>
+      <p>Assign a task with a time. The other person's Conviea does the reminding.</p>
     </div>
 
     <div class="hint">
@@ -850,7 +856,7 @@ function viewSettings() {
       <div class="char-grid" style="margin-top:10px">
         ${CHARACTERS.map((c) => `
           <button class="char-pick ${p.character === c.id ? 'on' : ''}" data-char="${c.id}">
-            ${buddySvg(c.id)}
+            ${buddyArt(c.id)}
             <span class="n">${c.name}</span>
             <span class="r">${c.role}</span>
           </button>`).join('')}
@@ -874,7 +880,7 @@ function viewSettings() {
       <span class="label">Your name</span>
       <input id="sName" value="${esc(p.name)}" placeholder="Shiv" style="margin-top:8px;width:220px">
       <div class="d" style="font-size:12.5px;color:var(--text-dim);margin-top:6px">
-        Buddy uses this to say hello.
+        Conviea uses this to say hello.
       </div>
     </div>
 
@@ -909,7 +915,7 @@ function viewSettings() {
     </div>
 
     <div class="card">
-      <span class="label">What Buddy helps with</span>
+      <span class="label">What Conviea helps with</span>
       <div class="d" style="font-size:12.5px;color:var(--text-dim);margin:6px 0 10px">
         Only decides which suggestions you're offered when adding something.
       </div>
@@ -922,7 +928,7 @@ function viewSettings() {
       <span class="label">Quiet hours</span>
       <div class="toggle-row">
         <div><div class="t">Don't interrupt between</div>
-          <div class="d">Buddy stays hidden, whatever is due.</div></div>
+          <div class="d">Conviea stays hidden, whatever is due.</div></div>
         <div style="display:flex;gap:8px;align-items:center">
           <input id="sQs" type="time" value="${hhmm(p.quiet_start)}" style="width:110px">
           <span class="d">and</span>
@@ -941,7 +947,7 @@ function viewSettings() {
     <div class="card">
       <span class="label">System</span>
       <div class="toggle-row">
-        <div><div class="t">Start Buddy when I turn on my computer</div>
+        <div><div class="t">Start Conviea when I turn on my computer</div>
           <div class="d">Opens quietly with no window.</div></div>
         <button class="switch ${p.autostart ? 'on' : ''}" id="sAuto"></button>
       </div>
@@ -1067,7 +1073,7 @@ load()
 // Keep "in 18 minutes" honest without a full re-render storm.
 setInterval(() => { if (view === 'today') render(); }, 60_000);
 
-// Work assigned while Buddy is open should not wait for a restart.
+// Work assigned while Conviea is open should not wait for a restart.
 setInterval(async () => {
   if (await pullInbox()) render();
 }, 5 * 60_000);

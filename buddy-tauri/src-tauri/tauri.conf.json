@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Buddy",
+  "productName": "Conviea",
   "version": "1.6.0",
   "identifier": "com.buddy.desktop",
   "build": {
@@ -25,7 +25,7 @@
       "icons/icon.ico"
     ],
     "shortDescription": "A little companion that reminds you when it's time.",
-    "longDescription": "Buddy is a playful desktop companion. You tell it what to do and when — it stays hidden until that moment, appears for a few seconds, and disappears again.",
+    "longDescription": "Conviea is a playful desktop companion. You tell it what to do and when — it stays hidden until that moment, appears for a few seconds, and disappears again.",
     "macOS": {
       "minimumSystemVersion": "10.15"
     },

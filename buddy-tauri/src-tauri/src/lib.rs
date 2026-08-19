@@ -271,7 +271,7 @@ fn show_main(app: &AppHandle) {
         return;
     }
     let _ = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("Buddy")
+        .title("Conviea")
         .inner_size(880.0, 640.0)
         .min_inner_size(720.0, 520.0)
         .resizable(true)
@@ -285,7 +285,7 @@ fn show_auth(app: &AppHandle) {
         return;
     }
     let _ = WebviewWindowBuilder::new(app, "auth", WebviewUrl::App("auth.html".into()))
-        .title("Buddy")
+        .title("Conviea")
         .inner_size(460.0, 600.0)
         .resizable(false)
         .center()
@@ -294,7 +294,7 @@ fn show_auth(app: &AppHandle) {
 
 fn show_onboarding(app: &AppHandle) {
     let _ = WebviewWindowBuilder::new(app, "onboarding", WebviewUrl::App("onboarding.html".into()))
-        .title("Welcome to Buddy")
+        .title("Welcome to Conviea")
         .inner_size(560.0, 600.0)
         .resizable(false)
         .center()
@@ -311,7 +311,7 @@ fn present(app: &AppHandle, items: Vec<DueItem>) {
         Some(w) => w,
         None => {
             match WebviewWindowBuilder::new(app, "reminder", WebviewUrl::App("reminder.html".into()))
-                .title("Buddy")
+                .title("Conviea")
                 .inner_size(REMINDER_W, REMINDER_H)
                 .decorations(false)
                 .transparent(true)
@@ -325,7 +325,7 @@ fn present(app: &AppHandle, items: Vec<DueItem>) {
             {
                 Ok(w) => w,
                 Err(e) => {
-                    eprintln!("buddy: could not create reminder window: {e}");
+                    eprintln!("conviea: could not create reminder window: {e}");
                     return;
                 }
             }
@@ -344,7 +344,7 @@ fn present(app: &AppHandle, items: Vec<DueItem>) {
                 let _ = app
                     .notification()
                     .builder()
-                    .title("Buddy")
+                    .title("Conviea")
                     .body(&first.title)
                     .show();
             }
@@ -456,13 +456,13 @@ pub fn run() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Buddy");
+        .expect("error while running Conviea");
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open Buddy", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open Conviea", true, None::<&str>)?;
     let test = MenuItem::with_id(app, "test", "Test reminder", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Buddy", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit Conviea", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &test, &quit])?;
 
     TrayIconBuilder::with_id("buddy")

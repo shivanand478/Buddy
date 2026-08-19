@@ -4,19 +4,24 @@ use uuid::Uuid;
 
 // ---------------------------------------------------------------- characters
 
+/// The aliases carry the five original characters forward: anyone who had
+/// already picked one keeps a companion instead of being silently reset.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum CharacterId {
-    Nub,
-    Miso,
-    Bolt,
-    Zib,
-    Pip,
+    #[serde(alias = "nub", alias = "pip")]
+    Sprout,
+    #[serde(alias = "miso")]
+    Nimbus,
+    #[serde(alias = "zib")]
+    Dew,
+    #[serde(alias = "bolt")]
+    Sunny,
 }
 
 impl Default for CharacterId {
     fn default() -> Self {
-        CharacterId::Nub
+        CharacterId::Sprout
     }
 }
 

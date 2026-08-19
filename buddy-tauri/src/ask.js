@@ -3,7 +3,7 @@ import { esc, hhmmLabel, newId } from './util.js';
 // instead of filling in a form. Same flow is used by the morning check-in and
 // the Tasks view.
 
-/// What Buddy can help with. Stored on `prefs.focus_areas` and read back to
+/// What Conviea can help with. Stored on `prefs.focus_areas` and read back to
 /// decide which starter suggestions to offer — the only thing it is ever for.
 export const FOCUS_AREAS = [
   { id: 'work',     emoji: '💼', name: 'Work',

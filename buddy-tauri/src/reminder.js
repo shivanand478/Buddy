@@ -1,4 +1,4 @@
-import { installSprite } from './characters.js';
+import { installSprite, knownCharacter } from './characters.js';
 
 const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
@@ -150,7 +150,7 @@ async function boot() {
     const data = await invoke('get_data');
     dismissSeconds = data?.prefs?.dismiss_seconds || 12;
     const ch = data?.prefs?.character || 'nub';
-    el('buddyUse').setAttribute('href', `#c-${ch}`);
+    el('buddy').src = `img/${knownCharacter(ch)}.png`;
   } catch (e) {
     console.error('buddy: could not read prefs', e);
   }

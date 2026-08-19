@@ -1,4 +1,4 @@
-import { installSprite, buddySvg, CHARACTERS } from './characters.js';
+import { installSprite, buddyArt, CHARACTERS } from './characters.js';
 import { esc } from './util.js';
 import { FOCUS_AREAS } from './ask.js';
 
@@ -18,7 +18,7 @@ function demoMarkup(char) {
   return `
     <div class="demo-stage">
       <div class="demo-pop" id="demoPop">
-        ${buddySvg(char)}
+        ${buddyArt(char)}
         <div class="demo-bubble">
           <div class="demo-kind">TASK · 4:30 PM</div>
           <div class="demo-msg">Time to finish the homepage.</div>
@@ -39,12 +39,12 @@ function playDemo() {
 }
 
 const SCREENS = [
-  // 01 — Meet Buddy. The product introduces itself before it asks anything.
+  // 01 — Meet Conviea. The product introduces itself before it asks anything.
   () => ({
     center: true,
     html: `
-      <div class="hero-buddy">${buddySvg(data.prefs.character)}</div>
-      <h2>Meet your new Buddy.</h2>
+      <div class="hero-buddy">${buddyArt(data.prefs.character)}</div>
+      <h2>Meet your new buddy.</h2>
       <p class="sub">I'll remind you when it's time to get things done.<br>
       Tasks, routines, goals — you tell me when. I'll remember.</p>
       <input id="obName" placeholder="What should I call you?" value="${esc(picked.name)}"
@@ -58,16 +58,16 @@ const SCREENS = [
     }
   }),
 
-  // 02 — Pick your Buddy. The character is the identity of the product, so it
+  // 02 — Pick your buddy. The character is the identity of the product, so it
   // gets a screen of its own and is shown doing the one thing it does.
   () => ({
     html: `
-      <h2>Pick your Buddy.</h2>
+      <h2>Pick your buddy.</h2>
       <p class="sub">You'll see them whenever it's time for a reminder.</p>
       <div class="char-grid" style="width:100%">
         ${CHARACTERS.map((c) => `
           <button class="char-pick ${data.prefs.character === c.id ? 'on' : ''}" data-char="${c.id}">
-            ${buddySvg(c.id)}
+            ${buddyArt(c.id)}
             <span class="n">${c.name}</span>
             <span class="r">${c.role}</span>
           </button>`).join('')}
@@ -84,11 +84,11 @@ const SCREENS = [
     }
   }),
 
-  // 03 — What should Buddy help with? Not a life-setup form: this only decides
+  // 03 — What should Conviea help with? Not a life-setup form: this only decides
   // which starter suggestions show up on the next screen and in the Tasks view.
   () => ({
     html: `
-      <h2>What should Buddy help you with?</h2>
+      <h2>What should Conviea help you with?</h2>
       <p class="sub">Pick whatever matters to you. You can change this anytime.</p>
       <div class="focus-grid">
         ${FOCUS_AREAS.map((a) => `
@@ -114,14 +114,14 @@ const SCREENS = [
   () => ({
     html: `
       <div class="ready-head">
-        <div class="hero-buddy small">${buddySvg(data.prefs.character)}</div>
+        <div class="hero-buddy small">${buddyArt(data.prefs.character)}</div>
         <h2>You're ready${picked.name.trim() ? ', ' + esc(picked.name.trim()) : ''}.</h2>
         <p class="sub" id="obRecap"></p>
       </div>
       <div class="perm">
         <div class="perm-row">
           <div>
-            <div class="perm-t">Open Buddy when I start my computer</div>
+            <div class="perm-t">Open Conviea when I start my computer</div>
             <div class="perm-d">This is how I'm already there in the morning, without you opening anything.</div>
           </div>
           <button class="switch ${picked.autostart ? 'on' : ''}" id="obAuto"></button>

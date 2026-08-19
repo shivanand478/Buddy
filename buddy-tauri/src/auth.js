@@ -1,4 +1,4 @@
-import { installSprite, buddySvg } from './characters.js';
+import { installSprite, buddyArt } from './characters.js';
 import { esc } from './util.js';
 import { hasServer, looksLikeEmail, requestCode, verifyCode } from './api.js';
 
@@ -25,8 +25,8 @@ const SCREENS = {
   welcome: () => ({
     back: false,
     html: `
-      <div class="mark">${buddySvg(data.prefs.character)}</div>
-      <h2>Buddy</h2>
+      <div class="mark">${buddyArt(data.prefs.character)}</div>
+      <h2>Conviea</h2>
       <p class="sub">A little companion that reminds you when it's time.
       Your account keeps your day in sync and lets your team send you things.</p>
       <div class="stack">
@@ -45,7 +45,7 @@ const SCREENS = {
       <h2>${mode === 'signup' ? "What's your email?" : 'Welcome back.'}</h2>
       <p class="sub">${hasServer()
         ? "We'll send a six-digit code to make sure it's really you. No password to remember."
-        : 'Buddy uses your email to identify you to your team.'}</p>
+        : 'Conviea uses your email to identify you to your team.'}</p>
       <input class="email-in" id="authEmail" type="email" inputmode="email"
              placeholder="you@example.com" value="${esc(email)}"
              autocomplete="email" autocapitalize="off" spellcheck="false">
@@ -56,7 +56,7 @@ const SCREENS = {
       ${hasServer() ? '' : `
         <div class="note">
           <strong>No account server is configured yet.</strong><br>
-          Buddy will keep this email on this computer only — nothing is sent,
+          Conviea will keep this email on this computer only — nothing is sent,
           and nothing is verified. Team invites need the server.
         </div>`}`,
     onMount() {
@@ -93,7 +93,7 @@ const SCREENS = {
   local: () => ({
     back: false,
     html: `
-      <div class="mark">${buddySvg(data.prefs.character)}</div>
+      <div class="mark">${buddyArt(data.prefs.character)}</div>
       <h2>You're in.</h2>
       <p class="sub">Signed in as <strong>${esc(email)}</strong> on this computer.</p>
       <div class="note">
@@ -248,7 +248,7 @@ function render() {
   pane().innerHTML = s.html;
   el('back').hidden = !s.back;
   el('legal').textContent = screen === 'welcome'
-    ? 'Buddy keeps your tasks on your own computer. Your email is only used to sign in and to let your team reach you.'
+    ? 'Conviea keeps your tasks on your own computer. Your email is only used to sign in and to let your team reach you.'
     : '';
   s.onMount && s.onMount();
 }
