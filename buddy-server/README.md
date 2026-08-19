@@ -27,6 +27,7 @@ switch later by adding a different secret — no code change, no redeploy.
 
 | Provider | Free tier | Secret name(s) | Sends to anyone without a domain? |
 |---|---|---|---|
+| **Resend** | 3,000/month | `RESEND_API_KEY` | Only with a verified domain |
 | **Brevo** | 300/day | `BREVO_API_KEY` | Yes — verify one sender address |
 | **Mailjet** | 200/day | `MAILJET_API_KEY` + `MAILJET_SECRET` | Yes — verify one sender address |
 | **SendGrid** | 100/day | `SENDGRID_API_KEY` | Yes — "single sender verification" |
@@ -105,11 +106,28 @@ app already speaks this protocol.
 | API | `https://buddy-api.buddyapp.workers.dev` |
 | Worker | `buddy-api` |
 | D1 database | `buddy` — `4993a9cf-ac51-4a2c-a367-61e322a80067` |
-| Sender | `shivanandp478@gmail.com` (Brevo, free plan) |
+| Email | Resend, sending from `buddy@conviea.com` |
+| Domain | `conviea.com`, DNS at Hostinger, verified by Resend |
 
 The schema in this file has been run against that database, so the table
 definitions here are known to be accepted by real D1 rather than only by the
-test stand-in.
+test stand-in. The full sign-in loop — code emailed, code verified, session
+issued, team created, replay refused — has been exercised against this
+deployment.
+
+### Two things that cost time, so they are written down
+
+**Adding a secret does not deploy it.** Saving `RESEND_API_KEY` in the
+dashboard showed "Value encrypted" immediately, but the *running* version kept
+answering `"email":null` — settings and deployments are separate. Re-uploading
+the script with the secret listed as `{ "type": "inherit", "name": "..." }`
+picks it up without ever handling the value. `/health` naming the live provider
+is what makes this visible at all.
+
+**Brevo blocks unauthorized IPs for API keys by default.** There is no address
+you could allowlist for a Worker, so every send fails. Deactivate it under
+Security → Authorized IPs, then *reload the page* — the success toast has been
+observed to lie while the setting silently reverts.
 
 ## The endpoints
 
