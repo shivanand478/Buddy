@@ -1,4 +1,4 @@
-<title>Buddy</title>
+<title>Conviea</title>
 
 <style>
   /* ---------- tokens: light is the base; both dark states redefine only tokens ---------- */
@@ -146,6 +146,32 @@
     transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
   }
   .btn svg { width: 16px; height: 16px; flex: none; }
+  /* The art is a raster with real pixel dimensions, so an unsized context
+     would blow it up to 300px. Everything below is an explicit override. */
+  .art { width: 56px; height: 56px; object-fit: contain; }
+
+  /* The characters are the reason anyone smiles at this page, so they move.
+     A slow drift at rest, a spring on hover, and a settled bob once chosen —
+     each keyed to a different duration so a row of them never marches in step. */
+  @keyframes drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+  @keyframes cheer {
+    0%   { transform: translateY(0) rotate(0); }
+    35%  { transform: translateY(-10px) rotate(-5deg); }
+    70%  { transform: translateY(-4px) rotate(4deg); }
+    100% { transform: translateY(0) rotate(0); }
+  }
+  .char .art { transition: transform .3s cubic-bezier(.2,1.3,.4,1); }
+  .char:nth-child(1) .art { animation: drift 3.2s ease-in-out infinite; }
+  .char:nth-child(2) .art { animation: drift 3.8s ease-in-out .3s infinite; }
+  .char:nth-child(3) .art { animation: drift 3.5s ease-in-out .6s infinite; }
+  .char:nth-child(4) .art { animation: drift 4.1s ease-in-out .15s infinite; }
+  .char:hover .art { animation: cheer .6s cubic-bezier(.2,1.2,.4,1); }
+  .char[aria-pressed="true"] .art { transform: scale(1.08); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .char .art, .char:hover .art { animation: none; }
+  }
+  img.art, img.poster-buddy, img.final-art { user-select: none; -webkit-user-drag: none; }
   .btn-primary {
     background: var(--accent);
     color: var(--accent-ink);
@@ -186,7 +212,7 @@
     letter-spacing: -0.04em;
     text-decoration: none;
   }
-  .mark svg { width: 25px; height: 27px; }
+  .mark .art { width: 30px; height: 30px; object-fit: contain; }
   .nav-links { display: flex; gap: 26px; font-family: var(--font-display); font-size: 14.5px; font-weight: 500; }
   .nav-links a { text-decoration: none; color: var(--text-mid); }
   .nav-links a:hover { color: var(--text); }
@@ -238,7 +264,7 @@
     border: 1px solid var(--line);
     box-shadow: var(--shadow-lg);
   }
-  .poster-buddy { width: clamp(170px, 26vw, 230px); height: auto; display: block; }
+  .poster-buddy { width: clamp(180px, 27vw, 250px); height: auto; display: block; }
   .poster-buddy.is-live { animation: float 3.4s ease-in-out infinite; }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
@@ -409,7 +435,7 @@
     align-items: flex-end;
     gap: 8px;
   }
-  .mini svg { width: 46px; height: auto; flex: none; }
+  .mini .art { width: 56px; height: 56px; object-fit: contain; flex: none; }
   .mini-bubble {
     background: var(--surface);
     border: 1px solid var(--line);
@@ -525,11 +551,11 @@
   /* ---------- characters ---------- */
   .chars {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 14px;
     margin-top: 52px;
   }
-  @media (max-width: 940px) { .chars { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 940px) { .chars { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 560px) { .chars { grid-template-columns: repeat(2, 1fr); } }
 
   .char {
@@ -548,7 +574,7 @@
     transition: transform .2s ease, border-color .2s ease, background .2s ease;
   }
   .char:hover { transform: translateY(-6px); border-color: var(--accent); }
-  .char svg { width: 74px; height: auto; }
+  .char .art { width: 92px; height: 92px; object-fit: contain; }
   .char-name { font-family: var(--font-display); font-weight: 700; font-size: 16px; letter-spacing: -.03em; }
   .char-role {
     font-family: var(--font-mono);
@@ -577,9 +603,7 @@
     align-items: center;
     gap: 18px;
   }
-  /* Direct child only — a bare `.final svg` also grabs the button icons,
-     which sit at the same specificity as `.btn svg` and would win on order. */
-  .final > svg { width: clamp(130px, 20vw, 180px); height: auto; }
+  .final > .final-art { width: clamp(140px, 21vw, 190px); height: auto; }
   .final h2 { font-size: clamp(32px, 5vw, 54px); color: #fff; max-width: 16ch; }
   .final p { color: #A9C4C6; font-size: 18px; }
   .final .btn-ghost {
@@ -638,92 +662,6 @@
 
 <!-- ===== character sprite ===== -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <style>
-    .eyes { transform-box: fill-box; transform-origin: center; animation: blinkEye 5.2s infinite; }
-    @keyframes blinkEye {
-      0%, 92%, 100% { transform: scaleY(1); }
-      95%           { transform: scaleY(.12); }
-    }
-    @media (prefers-reduced-motion: reduce) { .eyes { animation: none; } }
-  </style>
-
-  <symbol id="c-pip" viewBox="0 0 100 110">
-    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
-    <rect x="30" y="62" width="40" height="38" rx="15" fill="#E0654B"/>
-    <circle cx="50" cy="42" r="30" fill="#F6D2B4"/>
-    <path d="M20 40c2-20 16-30 30-30s28 10 30 28c-8-6-14-12-22-14-6 6-24 10-38 16z" fill="#3A2A26"/>
-    <g class="eyes">
-      <circle cx="40" cy="44" r="4" fill="#2A1F1C"/>
-      <circle cx="61" cy="44" r="4" fill="#2A1F1C"/>
-    </g>
-    <circle cx="32" cy="53" r="5" fill="#EFA089" opacity=".55"/>
-    <circle cx="69" cy="53" r="5" fill="#EFA089" opacity=".55"/>
-    <path d="M43 56q7 6 14 0" stroke="#2A1F1C" stroke-width="3" fill="none" stroke-linecap="round"/>
-  </symbol>
-
-  <symbol id="c-bolt" viewBox="0 0 100 110">
-    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
-    <rect x="33" y="66" width="34" height="34" rx="10" fill="#8FA6AE"/>
-    <rect x="42" y="72" width="16" height="10" rx="3" fill="#EFB43B"/>
-    <path d="M50 14v10" stroke="#8FA6AE" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="50" cy="11" r="5" fill="#EFB43B"/>
-    <rect x="20" y="24" width="60" height="46" rx="16" fill="#C3D2D6"/>
-    <rect x="27" y="33" width="46" height="26" rx="11" fill="#1B3D48"/>
-    <g class="eyes">
-      <rect x="35" y="41" width="10" height="10" rx="4" fill="#6FE0C4"/>
-      <rect x="55" y="41" width="10" height="10" rx="4" fill="#6FE0C4"/>
-    </g>
-  </symbol>
-
-  <symbol id="c-miso" viewBox="0 0 100 110">
-    <ellipse cx="50" cy="103" rx="26" ry="5" fill="rgba(0,0,0,.14)"/>
-    <path d="M50 66c18 0 27 12 27 24 0 6-4 10-9 10H32c-5 0-9-4-9-10 0-12 9-24 27-24z" fill="#F0B48A"/>
-    <path d="M25 30l3-19 17 12z" fill="#F0B48A"/>
-    <path d="M75 30l-3-19-17 12z" fill="#F0B48A"/>
-    <path d="M29 26l2-10 9 7z" fill="#E08C7C"/>
-    <path d="M71 26l-2-10-9 7z" fill="#E08C7C"/>
-    <ellipse cx="50" cy="44" rx="30" ry="26" fill="#F5C39F"/>
-    <g class="eyes">
-      <ellipse cx="39" cy="42" rx="4.5" ry="6" fill="#2E2320"/>
-      <ellipse cx="61" cy="42" rx="4.5" ry="6" fill="#2E2320"/>
-    </g>
-    <path d="M46 53h8l-4 4z" fill="#E08C7C"/>
-    <path d="M50 57q-5 5-9 1M50 57q5 5 9 1" stroke="#B5745F" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <path d="M16 44h12M16 51h12M84 44H72M84 51H72" stroke="#DCC0AC" stroke-width="1.6" stroke-linecap="round"/>
-  </symbol>
-
-  <symbol id="c-zib" viewBox="0 0 100 110">
-    <ellipse cx="50" cy="103" rx="24" ry="5" fill="rgba(0,0,0,.14)"/>
-    <path d="M50 70c13 0 21 9 21 20 0 6-4 10-10 10H39c-6 0-10-4-10-10 0-11 8-20 21-20z" fill="#5F9C85"/>
-    <path d="M34 20l6 12M66 20l-6 12" stroke="#5F9C85" stroke-width="3.5" stroke-linecap="round"/>
-    <circle cx="33" cy="17" r="4.5" fill="#EFB43B"/>
-    <circle cx="67" cy="17" r="4.5" fill="#EFB43B"/>
-    <ellipse cx="50" cy="46" rx="29" ry="27" fill="#7FBCA3"/>
-    <g class="eyes">
-      <ellipse cx="38" cy="45" rx="7" ry="10" fill="#12303A" transform="rotate(-12 38 45)"/>
-      <ellipse cx="62" cy="45" rx="7" ry="10" fill="#12303A" transform="rotate(12 62 45)"/>
-    </g>
-    <circle cx="36" cy="41" r="2.4" fill="#fff"/>
-    <circle cx="60" cy="41" r="2.4" fill="#fff"/>
-    <path d="M44 61q6 4 12 0" stroke="#3A6B5C" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-  </symbol>
-
-  <symbol id="c-nub" viewBox="0 0 100 110">
-    <ellipse cx="50" cy="103" rx="27" ry="5" fill="rgba(0,0,0,.14)"/>
-    <path d="M50 16c19 0 33 15 33 38 0 26-14 46-33 46S17 80 17 54c0-23 14-38 33-38z" fill="#EFB43B"/>
-    <path d="M50 4l9 14H41z" fill="#E0654B"/>
-    <g class="eyes">
-      <circle cx="38" cy="50" r="8" fill="#fff"/>
-      <circle cx="62" cy="50" r="8" fill="#fff"/>
-      <circle cx="39" cy="51" r="4" fill="#2A1F1C"/>
-      <circle cx="63" cy="51" r="4" fill="#2A1F1C"/>
-    </g>
-    <path d="M42 68q8 8 16 0" stroke="#8A5F16" stroke-width="3" fill="none" stroke-linecap="round"/>
-    <circle cx="27" cy="63" r="5" fill="#E0654B" opacity=".45"/>
-    <circle cx="73" cy="63" r="5" fill="#E0654B" opacity=".45"/>
-    <path d="M34 100l-5 6M66 100l5 6" stroke="#D89F26" stroke-width="4" stroke-linecap="round"/>
-  </symbol>
-
   <symbol id="i-apple" viewBox="0 0 16 16">
     <path fill="currentColor" d="M11.1 8.5c0-1.4 1.1-2.1 1.2-2.2-.7-1-1.7-1.1-2.1-1.1-.9-.1-1.7.5-2.2.5s-1.2-.5-1.9-.5c-1 0-1.9.6-2.4 1.5-1 1.8-.3 4.4.7 5.9.5.7 1.1 1.5 1.9 1.5s1-.5 1.9-.5 1.2.5 2 .5 1.3-.7 1.8-1.4c.6-.8.8-1.6.8-1.6s-1.6-.6-1.7-2.6zM9.6 3.9c.4-.5.7-1.2.6-1.9-.6 0-1.4.4-1.8.9-.4.5-.7 1.2-.6 1.9.7.1 1.4-.4 1.8-.9z"/>
   </symbol>
@@ -736,8 +674,8 @@
 <nav class="nav">
   <div class="wrap nav-in">
     <a class="mark" href="#top">
-      <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
-      Buddy
+      <img class="art" src="img/sprout.png" alt="" draggable="false">
+      Conviea
     </a>
     <div class="nav-links">
       <a href="#how">How it works</a>
@@ -747,13 +685,13 @@
   </div>
 </nav>
 
-<!-- ===== 1. hero — what is Buddy? ===== -->
+<!-- ===== 1. hero — what is Conviea? ===== -->
 <header class="wrap hero" id="top">
   <div class="hero-grid">
     <div>
       <h1>Meet your little <em>productivity buddy</em>.</h1>
       <p class="lede">
-        Tasks, routines and team work — Buddy reminds you when it's time to
+        Tasks, routines and team work — Conviea reminds you when it's time to
         actually get things done.
       </p>
       <div class="btn-row">
@@ -771,20 +709,20 @@
       <p class="platform">Free · macOS 13+ · Windows 10+</p>
       <p class="firstrun">
         <b>Your computer will warn you the first time. That's expected.</b>
-        Buddy isn't signed with a paid certificate, so macOS and Windows treat it
+        Conviea isn't signed with a paid certificate, so macOS and Windows treat it
         as an unknown app — the warning is about the missing certificate, not about
         anything found in the app.
-        <b>macOS:</b> open Buddy, then <b>System Settings → Privacy &amp; Security</b> →
+        <b>macOS:</b> open Conviea, then <b>System Settings → Privacy &amp; Security</b> →
         <b>Open Anyway</b>. <b>Windows:</b> <b>More info</b> → <b>Run anyway</b>.
         Once only; after that it opens normally.
-        Every line of Buddy is public if you'd rather check before you trust it —
+        Every line of Conviea is public if you'd rather check before you trust it —
         <a href="https://github.com/shivanand478/Buddy" target="_blank" rel="noopener">read the source</a>.
       </p>
     </div>
 
     <div>
       <div class="poster">
-        <svg class="poster-buddy is-live" id="posterBuddy" viewBox="0 0 100 110" aria-hidden="true"><use id="heroChar" href="#c-nub"></use></svg>
+        <img class="poster-buddy is-live" id="posterConviea" src="img/sprout.png" alt="" draggable="false">
 
         <div class="card is-live" id="card">
           <div class="card-top">
@@ -806,7 +744,7 @@
           </div>
         </div>
       </div>
-      <p class="poster-note" id="posterNote">Buddy shows up, then leaves on its own — sped up here.</p>
+      <p class="poster-note" id="posterNote">Conviea shows up, then leaves on its own — sped up here.</p>
     </div>
   </div>
 </header>
@@ -814,13 +752,13 @@
 <!-- ===== 2. how it works ===== -->
 <section class="band band-alt" id="how">
   <div class="wrap">
-    <h2 class="h2">Plan the day once.<br>Buddy carries it.</h2>
+    <h2 class="h2">Plan the day once.<br>Conviea carries it.</h2>
 
     <div class="steps">
       <div class="step">
         <span class="step-n">01</span>
         <h3>Open your laptop</h3>
-        <p>Buddy is already there, asking what today looks like — and offering back whatever you didn't finish yesterday.</p>
+        <p>Conviea is already there, asking what today looks like — and offering back whatever you didn't finish yesterday.</p>
         <div class="step-demo">
           <div class="mock">
             <span class="mock-label">Still open from yesterday</span>
@@ -850,11 +788,11 @@
 
       <div class="step">
         <span class="step-n">03</span>
-        <h3>Buddy shows up</h3>
+        <h3>Conviea shows up</h3>
         <p>At 4:30, and not a moment before. Done, Snooze or Skip — then it disappears again.</p>
         <div class="step-demo">
           <div class="mini">
-            <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
+            <img class="art" src="img/sprout.png" alt="" draggable="false">
             <div class="mini-bubble">
               <p class="mini-msg">👋 Hey! It's time.</p>
               <div class="mini-acts"><span>Done</span><span>Snooze</span><span>Skip</span></div>
@@ -886,7 +824,7 @@
 
       <div class="side">
         <span class="side-head">For your team</span>
-        <h3>Assign it. Buddy chases it.</h3>
+        <h3>Assign it. Conviea chases it.</h3>
 
         <div class="assign-card">
           <div class="assign-row"><span class="k">Task</span><span class="v">Finish mobile homepage</span></div>
@@ -897,7 +835,7 @@
         <p class="then">Then, at 4:30, on Rahul's computer</p>
 
         <div class="mini">
-          <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-zib"></use></svg>
+          <img class="art" src="img/dew.png" alt="" draggable="false">
           <div class="mini-bubble">
             <p class="mini-msg">👋 Hey Rahul!</p>
             <p class="card-sub">Finish the mobile homepage. Assigned by Shiv.</p>
@@ -912,38 +850,32 @@
 <!-- ===== 4. pick your buddy ===== -->
 <section class="band band-alt" id="characters">
   <div class="wrap">
-    <h2 class="h2">Pick your Buddy.</h2>
+    <h2 class="h2">Pick your buddy.</h2>
 
     <div class="chars" id="chars">
-      <button class="char" type="button" data-char="c-nub" aria-pressed="true">
-        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
-        <span class="char-name">Nub</span>
-        <span class="char-role">The Motivator</span>
-        <span class="char-line">"You've got this."</span>
+      <button class="char" type="button" data-char="sprout" aria-pressed="true">
+        <img class="art" src="img/sprout.png" alt="" draggable="false">
+        <span class="char-name">Sprout</span>
+        <span class="char-role">The Grower</span>
+        <span class="char-line">“Small steps still count.”</span>
       </button>
-      <button class="char" type="button" data-char="c-miso" aria-pressed="false">
-        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-miso"></use></svg>
-        <span class="char-name">Miso</span>
-        <span class="char-role">The Chill One</span>
-        <span class="char-line">"No rush."</span>
+      <button class="char" type="button" data-char="nimbus" aria-pressed="false">
+        <img class="art" src="img/nimbus.png" alt="" draggable="false">
+        <span class="char-name">Nimbus</span>
+        <span class="char-role">The Calm One</span>
+        <span class="char-line">“No rush. We’ll get there.”</span>
       </button>
-      <button class="char" type="button" data-char="c-bolt" aria-pressed="false">
-        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-bolt"></use></svg>
-        <span class="char-name">Bolt</span>
-        <span class="char-role">The Strict One</span>
-        <span class="char-line">"You said 4:30."</span>
+      <button class="char" type="button" data-char="dew" aria-pressed="false">
+        <img class="art" src="img/dew.png" alt="" draggable="false">
+        <span class="char-name">Dew</span>
+        <span class="char-role">The Gentle One</span>
+        <span class="char-line">“Ready when you are.”</span>
       </button>
-      <button class="char" type="button" data-char="c-zib" aria-pressed="false">
-        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-zib"></use></svg>
-        <span class="char-name">Zib</span>
-        <span class="char-role">The Chaos One</span>
-        <span class="char-line">"HEY. Remember that thing?"</span>
-      </button>
-      <button class="char" type="button" data-char="c-pip" aria-pressed="false">
-        <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-pip"></use></svg>
-        <span class="char-name">Pip</span>
-        <span class="char-role">The Steady One</span>
-        <span class="char-line">"Right on time."</span>
+      <button class="char" type="button" data-char="sunny" aria-pressed="false">
+        <img class="art" src="img/sunny.png" alt="" draggable="false">
+        <span class="char-name">Sunny</span>
+        <span class="char-role">The Cheerer</span>
+        <span class="char-line">“You’ve got this!”</span>
       </button>
     </div>
   </div>
@@ -953,9 +885,9 @@
 <section class="band" id="download">
   <div class="wrap">
     <div class="final">
-      <svg viewBox="0 0 100 110" aria-hidden="true"><use id="finalChar" href="#c-nub"></use></svg>
+      <img id="finalChar" class="final-art" src="img/sprout.png" alt="" draggable="false">
       <h2>Ready to get things done?</h2>
-      <p>Your Buddy is waiting.</p>
+      <p>Your Conviea is waiting.</p>
       <div class="btn-row" style="justify-content:center;margin-top:6px">
         <a class="btn btn-primary" data-dl="mac"
            href="https://github.com/shivanand478/Buddy/releases/download/v1.6.0/Buddy_1.6.0_universal.dmg">
@@ -970,13 +902,13 @@
       </div>
       <p class="firstrun">
         <b>Your computer will warn you the first time. That's expected.</b>
-        Buddy isn't signed with a paid certificate, so macOS and Windows treat it
+        Conviea isn't signed with a paid certificate, so macOS and Windows treat it
         as an unknown app — the warning is about the missing certificate, not about
         anything found in the app.
-        <b>macOS:</b> open Buddy, then <b>System Settings → Privacy &amp; Security</b> →
+        <b>macOS:</b> open Conviea, then <b>System Settings → Privacy &amp; Security</b> →
         <b>Open Anyway</b>. <b>Windows:</b> <b>More info</b> → <b>Run anyway</b>.
         Once only; after that it opens normally.
-        Every line of Buddy is public if you'd rather check before you trust it —
+        Every line of Conviea is public if you'd rather check before you trust it —
         <a href="https://github.com/shivanand478/Buddy" target="_blank" rel="noopener">read the source</a>.
       </p>
     </div>
@@ -987,8 +919,8 @@
 <footer class="wrap foot">
   <div class="foot-in">
     <a class="mark" href="#top">
-      <svg viewBox="0 0 100 110" aria-hidden="true"><use href="#c-nub"></use></svg>
-      Buddy
+      <img class="art" src="img/sprout.png" alt="" draggable="false">
+      Conviea
     </a>
     <div class="foot-links">
       <a href="#download">macOS</a>
@@ -996,7 +928,7 @@
       <a href="#top">Privacy</a>
       <a href="#top">Terms</a>
     </div>
-    <span class="foot-c">© 2026 Buddy</span>
+    <span class="foot-c">© 2026 Conviea</span>
   </div>
 </footer>
 
@@ -1009,7 +941,7 @@
    This block is pure enhancement: it asks for the newest release and rewrites
    the links if it gets an answer, so a future tag needs no edit here. Every
    failure path leaves the working hardcoded link alone.                      */
-var REPO = 'shivanand478/Buddy';
+var REPO = 'shivanand478/Conviea';
 
 (function () {
   if (!REPO || !window.fetch) return;
@@ -1040,9 +972,8 @@ var REPO = 'shivanand478/Buddy';
   var msgEl  = document.getElementById('cardMsg');
   var subEl  = document.getElementById('cardSub');
   var note   = document.getElementById('posterNote');
-  var buddy  = document.getElementById('posterBuddy');
-  var heroUse  = document.getElementById('heroChar');
-  var finalUse = document.getElementById('finalChar');
+  var buddy  = document.getElementById('posterConviea');
+  var finalArt = document.getElementById('finalChar');
 
   var queue = [
     { kind: 'Task',    time: '4:30 PM', msg: 'Hey Shiv! Time to finish the homepage.', sub: '30 minutes planned.' },
@@ -1090,7 +1021,7 @@ var REPO = 'shivanand478/Buddy';
     hide();
     note.textContent = label;
     later(function () {
-      note.textContent = 'Buddy shows up, then leaves on its own — sped up here.';
+      note.textContent = 'Conviea shows up, then leaves on its own — sped up here.';
     }, 1900);
     later(show, 2200);
   }
@@ -1106,8 +1037,10 @@ var REPO = 'shivanand478/Buddy';
     chars.querySelectorAll('.char').forEach(function (c) { c.setAttribute('aria-pressed', 'false'); });
     btn.setAttribute('aria-pressed', 'true');
     var id = '#' + btn.dataset.char;
-    heroUse.setAttribute('href', id);
-    finalUse.setAttribute('href', id);
+    // The art is a raster now, so the character changes by swapping the file
+    // rather than by pointing a <use> at a different symbol.
+    buddy.src = 'img/' + id + '.png';
+    if (finalArt) finalArt.src = 'img/' + id + '.png';
   });
 
   later(show, 600);
