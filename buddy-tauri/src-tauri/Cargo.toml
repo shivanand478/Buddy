@@ -1,6 +1,6 @@
 [package]
 name = "buddy"
-version = "1.6.0"
+version = "1.7.0"
 description = "A playful desktop companion that reminds you when it's time."
 edition = "2021"
 rust-version = "1.77"
